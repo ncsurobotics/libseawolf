@@ -180,7 +180,7 @@ Task_Handle Task_background(int (*func)(void)) {
  * \param args A NULL terminated list of program arguments
  * \return -1 on failure, otherwise the PID of spawned application is returned
  */
-pid_t Task_spawnApplication(const char* path, char* args, ...) {
+pid_t Task_spawnApplication(char* path, char* args, ...) {
     int pid;
     va_list ap;
     char* argv[MAX_ARGS + 1];
