@@ -7,17 +7,5 @@ syntax: glob
 *.swp
 
 syntax: regexp
-^libseawolf/hub$
-^libseawolf/doc/
-^serial/bin/
-^serial/serialapp
-^applications/bin/
-^acoustics/bfin/bin/
-^acoustics/bfin/acoustics_bundle.tar$
-
-# Vision
-syntax: regexp
-^vision/.*\.jpe?g$
-^vision/2010/main$
-^vision/2010/debug.mk$
-^vision/2010/lib/doc/
+^hub$
+^doc/
