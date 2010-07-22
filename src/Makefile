@@ -1,7 +1,7 @@
 
 LIB_LDFLAGS= -lrt -lpthread --shared -fPIC
 
-INCLUDES=../include/seawolf/* ../include/seawolf.h
+INCLUDES=../include/seawolf/*.h ../include/seawolf.h
 
 LIB_SRC= ardcomm.c logging.c main.c notify.c pid.c \
 	var.c seawolf_config.c serial.c stack.c \
@@ -19,6 +19,15 @@ $(HUB_NAME): $(INCLUDES) hub/*.c hub/*.h
 
 %.o: %.c $(INCLUDES) 
 	$(CC) $(CFLAGS) -c $< -o $@
+
+install: all
+	install -d 0755 $(PREFIX)/include $(PREFIX)/include/seawolf $(PREFIX)/bin $(PREFIX)/lib
+	install -m 0644 $(LIB_NAME) $(PREFIX)/lib/$(LIB_NAME).$(MAJOR_VERSION).$(MINOR_VERSION).$(REVISION)
+	install -m 0644 ../include/seawolf.h $(PREFIX)/include/
+	install -m 0644 ../include/seawolf/* $(PREFIX)/include/seawolf/
+	ln -sf $(PREFIX)/lib/$(LIB_NAME).$(MAJOR_VERSION).$(MINOR_VERSION).$(REVISION) $(PREFIX)/lib/$(LIB_NAME).$(MAJOR_VERSION)
+	ln -sf $(PREFIX)/lib/$(LIB_NAME).$(MAJOR_VERSION).$(MINOR_VERSION).$(REVISION) $(PREFIX)/lib/$(LIB_NAME)
+	$(MAKE) -C hub install
 
 clean:
 	@for _f in $(LIB_OBJECTS) $(LIB_NAME); do \

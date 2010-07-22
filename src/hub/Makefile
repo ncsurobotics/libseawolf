@@ -1,5 +1,5 @@
 
-HUB_LDFLAGS= -L$(LIB_PATH) -lsqlite3 -lseawolf
+HUB_LDFLAGS= -L../ -lsqlite3 -lseawolf
 
 INCLUDES= ../../include/seawolf/* ../../include/seawolf.h seawolf_hub.h
 
@@ -13,6 +13,9 @@ $(HUB_NAME): $(HUB_OBJECTS)
 
 %.o: %.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+install: $(HUB_NAME)
+	install -m 0755 $(HUB_NAME) $(PREFIX)/bin
 
 clean:
 	@for _f in $(HUB_OBJECTS) $(HUB_NAME); do \
