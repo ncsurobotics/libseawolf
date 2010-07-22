@@ -14,7 +14,7 @@ all: $(LIB_NAME) $(HUB_NAME)
 $(LIB_NAME): $(LIB_OBJECTS) 
 	$(CC) $(LIB_LDFLAGS) $(LIB_OBJECTS) -o $(LIB_NAME)
 
-$(HUB_NAME): $(INCLUDES) hub/*.c hub/*.h
+$(HUB_NAME): $(LIB_NAME)
 	$(MAKE) -C hub
 
 %.o: %.c $(INCLUDES) 
@@ -27,7 +27,9 @@ install: all
 	install -m 0644 ../include/seawolf/* $(PREFIX)/include/seawolf/
 	ln -sf $(PREFIX)/lib/$(LIB_NAME).$(MAJOR_VERSION).$(MINOR_VERSION).$(REVISION) $(PREFIX)/lib/$(LIB_NAME).$(MAJOR_VERSION)
 	ln -sf $(PREFIX)/lib/$(LIB_NAME).$(MAJOR_VERSION).$(MINOR_VERSION).$(REVISION) $(PREFIX)/lib/$(LIB_NAME)
+ifneq ($(strip $(HUB_NAME)),)
 	$(MAKE) -C hub install
+endif
 
 clean:
 	@for _f in $(LIB_OBJECTS) $(LIB_NAME); do \
