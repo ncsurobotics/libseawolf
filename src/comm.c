@@ -5,9 +5,10 @@
 
 #include "seawolf.h"
 
-#include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <pthread.h>
+#include <sys/socket.h>
 
 /**
  * \defgroup Comm Low-level communication

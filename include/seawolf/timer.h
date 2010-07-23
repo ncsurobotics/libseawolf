@@ -5,8 +5,6 @@
 #ifndef __SEAWOLF_TIMER_INCLUDE_H
 #define __SEAWOLF_TIMER_INCLUDE_H
 
-/** \private */
-#define _POSIX_C_SOURCE 199309L
 #include <time.h>
 
 /**

@@ -5,12 +5,11 @@
 
 #include "seawolf.h"
 
-#include <asm/ioctls.h>
 #include <fcntl.h>
 #include <poll.h>
-#include <unistd.h>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include <unistd.h>
 
 /** True if the serial component has been initialized */
 static bool initialized = false;
