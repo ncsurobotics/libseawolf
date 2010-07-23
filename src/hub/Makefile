@@ -3,7 +3,7 @@ HUB_LDFLAGS= -L../ -lseawolf
 
 # Sqlite flags
 SQLITE_LDFLAGS=$(shell pkg-config --libs sqlite3)
-SQLITE_CFALGS=$(shell pkg-config --cflags sqlite3)
+SQLITE_CFLAGS=$(shell pkg-config --cflags sqlite3)
 
 INCLUDES= ../../include/seawolf/* ../../include/seawolf.h seawolf_hub.h
 
