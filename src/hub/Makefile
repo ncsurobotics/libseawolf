@@ -1,5 +1,9 @@
 
-HUB_LDFLAGS= -L../ -lsqlite3 -lseawolf
+HUB_LDFLAGS= -L../ -lseawolf
+
+# Sqlite flags
+SQLITE_LDFLAGS=$(shell pkg-config --libs sqlite3)
+SQLITE_CFALGS=$(shell pkg-config --cflags sqlite3)
 
 INCLUDES= ../../include/seawolf/* ../../include/seawolf.h seawolf_hub.h
 
@@ -9,10 +13,10 @@ HUB_OBJECTS= $(HUB_SRC:.c=.o)
 all: $(HUB_NAME)
 
 $(HUB_NAME): $(HUB_OBJECTS)
-	$(CC) $(HUB_LDFLAGS) $(HUB_OBJECTS) -o $(HUB_NAME)
+	$(CC) $(HUB_LDFLAGS) $(SQLITE_LDFLAGS) $(HUB_OBJECTS) -o $(HUB_NAME)
 
 %.o: %.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(SQLITE_CFLAGS) -c $< -o $@
 
 install: $(HUB_NAME)
 	install -m 0755 $(HUB_NAME) $(PREFIX)/bin

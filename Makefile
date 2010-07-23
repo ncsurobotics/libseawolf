@@ -1,5 +1,4 @@
 
-
 export CC ?= gcc
 export PREFIX ?= /usr/local
 export LIB_NAME ?= libseawolf.so
