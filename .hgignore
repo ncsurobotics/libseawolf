@@ -7,5 +7,5 @@ syntax: glob
 *.swp
 
 syntax: regexp
-^hub$
-^doc/
+^seawolf-hub$
+^doc/html/
