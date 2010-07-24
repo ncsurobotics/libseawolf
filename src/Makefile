@@ -1,43 +1,45 @@
 
-LIB_LDFLAGS= -lrt -lpthread --shared -fPIC
+include ../build/config.base.mk
+include ../$(CONFIG)
 
-INCLUDES=../include/seawolf/*.h ../include/seawolf.h
+CFLAGS += -fPIC -I../include/
 
-LIB_SRC= ardcomm.c logging.c main.c notify.c pid.c \
+SONAME = $(LIB_NAME).$(MAJOR)
+LDFLAGS += -lpthread --shared -Wl,-soname,$(SONAME)
+LDFLAGS += $(EXTRA_LDFLAGS)
+
+INCLUDES= ../include/seawolf/*.h ../include/seawolf.h
+
+SRC = ardcomm.c logging.c main.c notify.c pid.c \
 	var.c seawolf_config.c serial.c stack.c \
 	task.c timer.c util.c dictionary.c list.c \
 	queue.c comm.c
-LIB_OBJECTS= $(LIB_SRC:.c=.o)
+OBJ = $(SRC:.c=.o)
 
-all: $(LIB_NAME) $(HUB_NAME)
+all: $(LIB_NAME)
 
-$(LIB_NAME): $(LIB_OBJECTS) 
-	$(CC) $(LIB_LDFLAGS) $(LIB_OBJECTS) -o $(LIB_NAME)
+$(LIB_NAME): $(OBJ) 
+	$(CC) $(LDFLAGS) $(OBJ) -o $(LIB_NAME)
 
-$(HUB_NAME): $(LIB_NAME)
-	$(MAKE) -C hub
-
-%.o: %.c $(INCLUDES) 
+.c.o:
 	$(CC) $(CFLAGS) -c $< -o $@
 
-install: all
-	install -d 0755 $(PREFIX)/include $(PREFIX)/include/seawolf $(PREFIX)/bin $(PREFIX)/lib
-	install -m 0644 $(LIB_NAME) $(PREFIX)/lib/$(LIB_NAME).$(MAJOR_VERSION).$(MINOR_VERSION).$(REVISION)
-	install -m 0644 ../include/seawolf.h $(PREFIX)/include/
-	install -m 0644 ../include/seawolf/* $(PREFIX)/include/seawolf/
-	ln -sf $(PREFIX)/lib/$(LIB_NAME).$(MAJOR_VERSION).$(MINOR_VERSION).$(REVISION) $(PREFIX)/lib/$(LIB_NAME).$(MAJOR_VERSION)
-	ln -sf $(PREFIX)/lib/$(LIB_NAME).$(MAJOR_VERSION).$(MINOR_VERSION).$(REVISION) $(PREFIX)/lib/$(LIB_NAME)
-ifneq ($(strip $(HUB_NAME)),)
-	$(MAKE) -C hub install
-endif
+$(OBJ): $(INCLUDES)
 
 clean:
-	@for _f in $(LIB_OBJECTS) $(LIB_NAME); do \
-	  if [ -f $$_f ]; then \
-	    echo rm $$_f; \
-	    rm $$_f; \
-	  fi; \
-	done;
-	$(MAKE) -C hub clean
+	-rm $(OBJ) $(LIB_NAME) 2> /dev/null
 
-.PHONY: all clean
+install: $(LIB_NAME)
+	install -m 0755 -d $(PREFIX)/include $(PREFIX)/include/seawolf $(PREFIX)/bin $(PREFIX)/lib
+	install -m 0644 $(LIB_NAME) $(PREFIX)/lib/$(LIB_NAME).$(MAJOR).$(MINOR).$(REV)
+	install -m 0644 ../include/seawolf.h $(PREFIX)/include/
+	install -m 0644 ../include/seawolf/* $(PREFIX)/include/seawolf/
+	ln -sf $(PREFIX)/lib/$(LIB_NAME).$(MAJOR).$(MINOR).$(REV) $(PREFIX)/lib/$(LIB_NAME).$(MAJOR)
+	ln -sf $(PREFIX)/lib/$(LIB_NAME).$(MAJOR).$(MINOR).$(REV) $(PREFIX)/lib/$(LIB_NAME)
+
+uninstall:
+	-rm $(PREFIX)/lib/$(LIB_NAME)*
+	-rm $(PREFIX)/include/seawolf.h
+	-rm -r $(PREFIX)/include/seawolf
+
+.PHONY: all clean install uninstall

@@ -1,0 +1,59 @@
+
+Prerequisites
+-------------
+
+To build libseawolf should require only a modern POSIX compliant system and GNU
+Make. If you wish to also build the Seawolf hub (which you likely do) you will
+also need Sqlite3 installed.
+
+
+
+Building
+--------
+
+Under Linux to build and install under /usr/local,
+
+  make && make install
+
+Under FreeBSD or OpenBSD with gmake installed,
+
+  gmake && gmake install
+
+To install to a different prefix set the PREFIX environment variable when
+running make install, e.g.,
+
+  PREFIX=/usr make install
+
+
+
+Cross Compiling
+---------------
+
+Support for building the library component for Blackfin systems running uCLinux
+is included in this standard distribution. The Blackfin toolchain must be
+present in the system path. To build run,
+
+  CONFIG=build/config.bfin.mk make install
+
+The library and includes will be installed into a top level folder called
+'bfin'. This can be changed in the same way as the prefix for standard builds.
+
+To crosscompile for other platforms the Blackfin configuration can be used as a
+starting point. The library component of libseawolf should be able to build on
+any platform with a complete POSIX environment.
+
+
+
+Building Documentation
+----------------------
+
+To build the HTML documentation for libseawolf requires the Doxygen,
+imagemagick, and graphviz packages. If these packages are installed then the
+documentation can be built by issuing,
+
+  make doc
+
+from the top level directory. If this process completes without error (a few
+warnings are to be expected) then the documentation can be found in the
+doc/html/ directory. If you are unable to build the documentation then a recent
+copy should be available online at http://docs.ncusrobotics.com.

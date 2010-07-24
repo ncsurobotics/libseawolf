@@ -1,8 +1,0 @@
-
-export CC= bfin-linux-uclibc-gcc
-export PREFIX= $(shell pwd)/bfin
-
-# Don't build the hub
-export HUB_NAME= 
-
-include $(shell pwd)/Makefile
