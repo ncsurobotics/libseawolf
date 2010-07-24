@@ -57,6 +57,71 @@ void Seawolf_init(const char* name) {
 }
 
 /**
+ * \brief Load a configuration file
+ *
+ * Load the options in the given configuration file.
+ *
+ * The valid configuration options are,
+ *  - Comm_server - This option specifies the IP address of hub server (default is 127.0.0.1)
+ *  - Comm_port - The port of the hub server (default is 31427)
+ *  - Comm_password - The password to authenticate with the hub server using (default is empty)
+ *
+ * \param filename File to load configuration from
+ */
+void Seawolf_loadConfig(const char* filename) {
+    Dictionary* config;
+    List* options;
+    char* option;
+    char* value;
+
+    config = Config_readFile(filename);
+
+    if(config == NULL) {
+        switch(Config_getError()) {
+        case CONFIG_EFILEACCESS:
+            perror("Failed to open configuration file");
+            break;
+        case CONFIG_ELINETOOLONG:
+            fprintf(stderr, "Line exceeded maximum allowable length at line %d\n", Config_getLineNumber());
+            break;
+        case CONFIG_EPARSE:
+            fprintf(stderr, "Parse error occured on line %d\n", Config_getLineNumber());
+            break;
+        default:
+            fprintf(stderr, "Unknown error occured while reading configuration file\n");
+            break;
+        }
+        Seawolf_exitError();
+        exit(EXIT_FAILURE);
+    }
+
+    /* Get the list of configuration options */
+    options = Dictionary_getKeys(config);
+
+    while(List_getSize(options)) {
+        /* Remove the first item from the list */
+        option = List_remove(options, 0);
+        value = Dictionary_get(config, option);
+
+        /* Check against configuration option */
+        if(strcmp(option, "Comm_password") == 0) {
+            Comm_setPassword(value);
+        } else if(strcmp(option, "Comm_server") == 0) {
+            Comm_setServer(value);
+        } else if(strcmp(option, "Comm_port") == 0) {
+            Comm_setPort(atoi(value));
+        } else {
+            fprintf(stderr, "Unknown configuration option '%s'\n", option);
+        }
+
+        free(value);
+    }
+
+    List_destroy(options);
+    Dictionary_destroy(config);
+}
+
+/**
  * \brief Catch spurious signals
  *
  * Catches signals and shuts down libseawolf properly before exiting

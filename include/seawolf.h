@@ -134,7 +134,6 @@
  * \subsection core_routines Core
  * These routines include core library initialization and configuration
  *  - \ref Main "Seawolf" - Library initialization and control routines.
- *  - \ref Config "Configuration" - Loading configuration options
  *
  * \subsection comm_routines Communication
  * These components focus on interprocess communication and application -> hub
@@ -167,6 +166,7 @@
  * \subsection misc_routines Utilities
  * A number of utilities often useful in robotics and other control systems
  * applications are provided as part of the library
+ *  - \ref Config "Configuration" - Loading configuration options
  *  - \ref PID "PID" - Generic implementation of a
  *    Proportional-Integral-Derivative (PID) controller
  *  - \ref Task "Task" - Support for task scheduling and running backgroud tasks
@@ -205,8 +205,6 @@
 #include <stdint.h>
 
 /* Include all Seawolf III development headers */
-#include "seawolf/seawolf_config.h"
-
 #include "seawolf/comm.h"
 #include "seawolf/logging.h"
 #include "seawolf/var.h"
@@ -215,6 +213,7 @@
 #include "seawolf/serial.h"
 #include "seawolf/ardcomm.h"
 
+#include "seawolf/config.h"
 #include "seawolf/util.h"
 #include "seawolf/timer.h"
 #include "seawolf/task.h"
@@ -232,5 +231,6 @@ void Seawolf_exitError(void);
 void Seawolf_exit(void);
 bool Seawolf_closing(void);
 char* Seawolf_getName(void);
+void Seawolf_loadConfig(const char* filename);
 
 #endif // #ifndef __SEAWOLF_ROOT_INCLUDE_H

@@ -10,10 +10,9 @@ LDFLAGS += $(EXTRA_LDFLAGS)
 
 INCLUDES= ../include/seawolf/*.h ../include/seawolf.h
 
-SRC = ardcomm.c logging.c main.c notify.c pid.c \
-	var.c seawolf_config.c serial.c stack.c \
-	task.c timer.c util.c dictionary.c list.c \
-	queue.c comm.c
+SRC = ardcomm.c logging.c main.c notify.c pid.c var.c config.c \
+      serial.c stack.c task.c timer.c util.c dictionary.c \
+      list.c queue.c comm.c
 OBJ = $(SRC:.c=.o)
 
 all: $(LIB_NAME)
