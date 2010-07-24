@@ -13,7 +13,11 @@ static char app_name[256];
 /** Library closed/closing */
 static bool closed = false;
 
+/** Path to the configuration file */
+static char* seawolf_config_file = NULL;
+
 static void Seawolf_catchSignal(int sig);
+static void Seawolf_processConfig(void);
 
 /**
  * \defgroup Main Library control
@@ -26,7 +30,15 @@ static void Seawolf_catchSignal(int sig);
  * \brief Initialize the library
  *
  * Perform all initialization to ready the library for use. Care must be taken
- * when making any calls before this is called
+ * when making any calls before this is called.
+ *
+ * One of the first tasks of Seawolf_init() is to read a configuration file. If
+ * no configuration file is specified then the default of /etc/seawolf.conf is
+ * used. An alternate configuration file can be specified by making a call to
+ * Seawolf_loadConfig() before calling Seawolf_init(). The environment variable
+ * SW_CONFIG can also be used to specify a configuration file, and if it is set,
+ * take precedence over a file specified by Seawolf_loadConfig(). This allows
+ * for alternate configuration files to be easily specified during testing.
  *
  * \param name Name of the program. This is used in debugging and logging
  */
@@ -34,12 +46,23 @@ void Seawolf_init(const char* name) {
     /* Copy name */
     strcpy(app_name, name);
 
-
     /* Catch siginals and insure proper shutdown */
     signal(SIGINT, Seawolf_catchSignal);
     signal(SIGHUP, Seawolf_catchSignal);
     signal(SIGTERM, Seawolf_catchSignal);
     signal(SIGPIPE, SIG_IGN);
+
+    /* Choose configuration file */
+    if(getenv("SW_CONFIG")) {
+        Logging_log(INFO, "Using configuration file specified in SW_CONFIG environment variable");
+        Seawolf_loadConfig(getenv("SW_CONFIG"));
+    } else if(seawolf_config_file == NULL) {
+        Logging_log(INFO, Util_format("Falling back to default config file at %s", SEAWOLF_DEFAULT_CONFIG));
+        Seawolf_loadConfig(SEAWOLF_DEFAULT_CONFIG);
+    }
+
+    /* Process the configuration file */
+    Seawolf_processConfig();
 
     /* Ensure shutdown during normal exit */
     atexit(Seawolf_close);
@@ -57,9 +80,9 @@ void Seawolf_init(const char* name) {
 }
 
 /**
- * \brief Load a configuration file
+ * \brief Specify a configuration file
  *
- * Load the options in the given configuration file.
+ * Load the options in the given configuration file when Seawolf_init() is called
  *
  * The valid configuration options are,
  *  - Comm_server - This option specifies the IP address of hub server (default is 127.0.0.1)
@@ -69,29 +92,46 @@ void Seawolf_init(const char* name) {
  * \param filename File to load configuration from
  */
 void Seawolf_loadConfig(const char* filename) {
+    if(seawolf_config_file) {
+        free(seawolf_config_file);
+    }
+
+    seawolf_config_file = strdup(filename);
+}
+
+/**
+ * \brief Process the configuration file specified by Seawolf_loadConfig()
+ *
+ * Seawolf_init() calls this function to process the configuration file set by
+ * Seawolf_loadConfig() or the default configuration file if one is not
+ * specified.
+ */
+static void Seawolf_processConfig(void) {
     Dictionary* config;
     List* options;
     char* option;
     char* value;
 
-    config = Config_readFile(filename);
+    config = Config_readFile(seawolf_config_file);
 
     if(config == NULL) {
         switch(Config_getError()) {
         case CONFIG_EFILEACCESS:
-            perror("Failed to open configuration file");
+            Logging_log(CRITICAL, Util_format("Failed to open configuration file: %s", strerror(errno)));
             break;
         case CONFIG_ELINETOOLONG:
-            fprintf(stderr, "Line exceeded maximum allowable length at line %d\n", Config_getLineNumber());
+            Logging_log(CRITICAL, Util_format("Line exceeded maximum allowable length at line %d", Config_getLineNumber()));
             break;
         case CONFIG_EPARSE:
-            fprintf(stderr, "Parse error occured on line %d\n", Config_getLineNumber());
+            Logging_log(CRITICAL, Util_format("Parse error occured on line %d", Config_getLineNumber()));
             break;
         default:
-            fprintf(stderr, "Unknown error occured while reading configuration file\n");
+            Logging_log(CRITICAL, "Unknown error occured while reading configuration file");
             break;
         }
         Seawolf_exitError();
+
+        /* Ensure we exit if Seawolf_exitError falls through */
         exit(EXIT_FAILURE);
     }
 
@@ -111,7 +151,7 @@ void Seawolf_loadConfig(const char* filename) {
         } else if(strcmp(option, "Comm_port") == 0) {
             Comm_setPort(atoi(value));
         } else {
-            fprintf(stderr, "Unknown configuration option '%s'\n", option);
+            Logging_log(WARNING, Util_format("Unknown configuration option '%s'", option));
         }
 
         free(value);

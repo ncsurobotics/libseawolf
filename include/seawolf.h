@@ -224,6 +224,9 @@
 #include "seawolf/queue.h"
 #include "seawolf/dictionary.h"
 
+/** Default location of the configuration file */
+#define SEAWOLF_DEFAULT_CONFIG "/etc/seawolf.conf"
+
 /* Initialize and close */
 void Seawolf_init(const char* name);
 void Seawolf_close(void);

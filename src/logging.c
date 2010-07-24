@@ -9,7 +9,7 @@
 static bool initialized = false;
 
 /** Minimum level at which to log messages */
-static short min_log_level = NORMAL;
+static short min_log_level = DEBUG;
 
 /** Should log messages be duplicated to standard output */
 static bool log_stdio = true;
