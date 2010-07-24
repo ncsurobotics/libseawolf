@@ -13,7 +13,9 @@
 #define RESPOND_TO_ALL 2
 #define SHUTDOWN_SENDER 3
 
-#define DEFAULT_DB "seawolf.db"
+#ifndef DEFAULT_DB
+# define DEFAULT_DB "seawolf.db"
+#endif
 
 struct Hub_Var_s {
     char* name;
@@ -33,8 +35,8 @@ void Hub_Net_mainLoop(void);
 int Hub_Process_process(Comm_Message* message, Comm_Message** response, bool* authenticated);
 char* Hub_Config_getOption(const char* config_key);
 
-void Hub_DB_init(void);
-void Hub_DB_setFile(const char* file);
+int Hub_DB_init(void);
+int Hub_DB_setFile(const char* file);
 Hub_DB_Result* Hub_DB_exec(const char* sql);
 int Hub_DB_next(Hub_DB_Result* result);
 void Hub_DB_freeResult(Hub_DB_Result* result);

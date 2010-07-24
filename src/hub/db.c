@@ -7,15 +7,26 @@
 static sqlite3* db_handle = NULL;
 static char* db_file = NULL;
 
-void Hub_DB_init(void) {
-    sqlite3_open(db_file, &db_handle);
+int Hub_DB_init(void) {
+    int retval;
+
+    retval = sqlite3_open(db_file, &db_handle);
+    if(retval != SQLITE_OK) {
+        Hub_DB_close();
+        return -1;
+    }
+
     Hub_DB_exec("CREATE TABLE IF NOT EXISTS config (option VARCHAR PRIMARY KEY, value VARCHAR);");
     Hub_DB_exec("CREATE TABLE IF NOT EXISTS variables (id INT AUTO_INCREMENT UNIQUE PRIMARY KEY, time TIMESTAMP, precisetime DOUBLE, name CHAR(20), value FLOAT);");
     Hub_DB_exec("CREATE TABLE IF NOT EXISTS variable_definitions (name CHAR(20), default_value DOUBLE, persistent BOOL, readonly BOOL);");
+
+    return 0;
 }
 
-void Hub_DB_setFile(const char* file) {
+int Hub_DB_setFile(const char* file) {
     db_file = strdup(file);
+
+    return 0;
 }
 
 Hub_DB_Result* Hub_DB_exec(const char* sql) {
@@ -55,5 +66,10 @@ void Hub_DB_close(void) {
     if(db_file) {
         free(db_file);
     }
-    sqlite3_close(db_handle);
+    if(db_handle) {
+        sqlite3_close(db_handle);
+    }
+
+    db_file = NULL;
+    db_handle = NULL;
 }

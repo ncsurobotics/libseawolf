@@ -3,10 +3,12 @@
 #include "seawolf.h"
 #include "seawolf_hub.h"
 
-/* Signal handling */
 #include <signal.h>
+#include <unistd.h>
 
 static void Hub_catchSignal(int sig);
+static void Hub_close(void);
+static void Hub_usage(char* arg0);
 
 void Hub_exitError(void) {
     Hub_Logging_log(INFO, "Terminating hub due to error condition");
@@ -29,9 +31,36 @@ static void Hub_close(void) {
     Util_close();
 }
 
+static void Hub_usage(char* arg0) {
+    printf("Usage: %s [-h] [-f db]\n", arg0);
+}
+
 int main(int argc, char** argv) {
-    /* Ensure shutdown during normal exit */
-    atexit(Hub_close);
+    int opt;
+    char* db_file = NULL;
+
+    /* Parse arguments list */
+    while((opt = getopt(argc, argv, ":hf:")) != -1) {
+        switch(opt) {
+        case 'h':
+            Hub_usage(argv[0]);
+            exit(EXIT_SUCCESS);
+            break;
+        case 'f':
+            db_file = optarg;
+            break;
+        case ':':
+            fprintf(stderr, "Option '%c' requires an argument\n", optopt);
+            Hub_usage(argv[0]);
+            exit(EXIT_FAILURE);
+        default:
+            /* Invalid option */
+            fprintf(stderr, "Invalid option '%c'\n", optopt);
+            Hub_usage(argv[0]);
+            exit(EXIT_FAILURE);
+            break;
+        }
+    }
     
     /* Please *ignore* SIGPIPE. It will cause the program to close in the case
        of writing to a closed socket. We handle this ourselves. */
@@ -43,17 +72,28 @@ int main(int argc, char** argv) {
     signal(SIGTERM, Hub_catchSignal);
 
     /* Use argument as database file */
-    if(argc == 2) {
-        Hub_DB_setFile(argv[1]);
-    } else {
-        Hub_DB_setFile(DEFAULT_DB);
+    if(!db_file) {
+        db_file = DEFAULT_DB;
     }
 
+    /* Set the DB file */
+    if(Hub_DB_setFile(db_file)) {
+        perror(Util_format("Unable to use database file %s", db_file));
+        exit(EXIT_FAILURE);
+    }
+    
     /* Initialize subcomponents */
-    Hub_DB_init();
+    if(Hub_DB_init()) {
+        perror(Util_format("Failed to initialize database %s", db_file));
+        exit(EXIT_FAILURE);
+    }
+
     Hub_Var_init();
     Hub_Logging_init();
 
+    /* Ensure shutdown during normal exit */
+    atexit(Hub_close);
+    
     /* Run the main network loop */
     Hub_Net_mainLoop();
 
