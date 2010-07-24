@@ -13,6 +13,8 @@
 #define RESPOND_TO_ALL 2
 #define SHUTDOWN_SENDER 3
 
+#define DEFAULT_DB "seawolf.db"
+
 struct Hub_Var_s {
     char* name;
     double value;
