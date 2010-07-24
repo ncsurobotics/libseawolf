@@ -252,7 +252,6 @@ int List_compareInt(void* _n1, void* _n2) {
  * \param cmp A function taking two void* and return an int. This function is
  * used to determine the sorting order of the list. cmp(a, b) should return -1
  * if a < b, 1 if a > b and 0 if a = b
- * \return your mom
  */
 void List_sort(List* list, int (*cmp)(void*, void*)) {
     if(List_getSize(list) < 2) {
