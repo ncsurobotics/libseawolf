@@ -5,6 +5,8 @@
 
 #include "seawolf.h"
 
+#include <ctype.h>
+
 /** True if the logging component has be initialized */
 static bool initialized = false;
 
@@ -37,18 +39,6 @@ static char* level_names[] = {"DEBUG",
  * \private
  */
 void Logging_init(void) {
-    /* Attempt to get the default logging level, this can be overridden with a
-       call to Logging_setThreshold(...) */
-    min_log_level = (int) Var_get("LogLevel");
-    if(min_log_level == -1) {
-        min_log_level = NORMAL;
-    }
-
-    /* Should log messages be replicated to the standard output? This can be
-       overridden after initialization with a call to
-       Logging_replicateStdio(...) */
-    log_stdio = (Var_get("LogReplicateStdout") == 1.0);
-
     initialized = true;
 }
 
@@ -84,6 +74,36 @@ void Logging_replicateStdio(bool do_replicate) {
  */
 char* Logging_getLevelName(short log_level) {
     return level_names[log_level];
+}
+
+/**
+ * \brief Get the numerical representation of a log level
+ *
+ * Get the numerical representation of a log level from the textual
+ * representation. This check is case insensitive.
+ *
+ * \param log_level The log level
+ * \return The numerical equivalent or -1 if unknown
+ */
+short Logging_getLevelFromName(const char* log_level) {
+    short level;
+    char* level_copy = strdup(log_level);
+
+    /* Convert to all uppercase */
+    for(int i = 0; level_copy[i] != '\0'; i++) {
+        level_copy[i] = toupper(level_copy[i]);
+    }
+    
+    /* Scan levels */
+    for(level = DEBUG; level <= CRITICAL; level++) {
+        if(strcmp(Logging_getLevelName(level), level_copy) == 0) {
+            free(level_copy);
+            return level;
+        }
+    }
+    
+    free(level_copy);
+    return -1;
 }
 
 /**

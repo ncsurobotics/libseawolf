@@ -111,6 +111,7 @@ static void Seawolf_processConfig(void) {
     List* options;
     char* option;
     char* value;
+    short level;
 
     config = Config_readFile(seawolf_config_file);
 
@@ -144,12 +145,21 @@ static void Seawolf_processConfig(void) {
         value = Dictionary_get(config, option);
 
         /* Check against configuration option */
-        if(strcmp(option, "Comm_password") == 0) {
+        if(strcmp(option, "comm_password") == 0) {
             Comm_setPassword(value);
-        } else if(strcmp(option, "Comm_server") == 0) {
+        } else if(strcmp(option, "comm_server") == 0) {
             Comm_setServer(value);
-        } else if(strcmp(option, "Comm_port") == 0) {
+        } else if(strcmp(option, "comm_port") == 0) {
             Comm_setPort(atoi(value));
+        } else if(strcmp(option, "log_level") == 0) {
+            level = Logging_getLevelFromName(value);
+            if(level == -1) {
+                Logging_log(ERROR, Util_format("Invalid logging level '%s'", value));
+            } else {
+                Logging_setThreshold(level);
+            }
+        } else if(strcmp(option, "log_replicate_stdout") == 0) {
+            Logging_replicateStdio(Config_truth(value));
         } else {
             Logging_log(WARNING, Util_format("Unknown configuration option '%s'", option));
         }
