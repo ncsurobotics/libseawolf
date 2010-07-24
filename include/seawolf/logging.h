@@ -49,6 +49,7 @@ void Logging_close(void);
 void Logging_setThreshold(short level);
 void Logging_replicateStdio(bool do_replicate);
 char* Logging_getLevelName(short log_level);
+short Logging_getLevelFromName(const char* log_level);
 void Logging_log(short level, char* message);
 
 #endif // #ifndef __SEAWOLF_LOGGING_INCLUDE_H

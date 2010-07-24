@@ -180,4 +180,33 @@ int Config_getLineNumber(void) {
     return config_lineno;
 }
 
+/**
+ * \brief Test the truth value of a string
+ *
+ * Perform a case insensitive test of the given string to determine whether it
+ * corresponds to a true or false configuration value. Values considered true
+ * are '1', 'true', 'yes', and 'on'. All other inputs are considered false.
+ *
+ * \param value The string to check
+ * \return The truth value of the string
+ */
+bool Config_truth(const char* value) {
+    char* value_copy = strdup(value);
+    bool retval;
+    
+    /* Convert to lower case */
+    for(int i = 0; value_copy[i] != '\0'; i++) {
+        value_copy[i] = tolower(value_copy[i]);
+    }
+    
+    /* Check for common values */
+    retval = ((strcmp(value_copy, "1") == 0) ||
+              (strcmp(value_copy, "true") == 0) ||
+              (strcmp(value_copy, "yes") == 0) ||
+              (strcmp(value_copy, "on") == 0));
+    
+    free(value_copy);
+    return retval;
+}
+
 /** \} */

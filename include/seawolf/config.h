@@ -43,5 +43,6 @@
 Dictionary* Config_readFile(const char* filename);
 int Config_getError(void);
 int Config_getLineNumber(void);
+bool Config_truth(const char* value);
 
 #endif // #ifndef __SEAWOLF_CONFIG_INCLUDE_H
