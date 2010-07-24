@@ -259,11 +259,11 @@ static int Comm_receiveThread(void) {
 /**
  * \brief Send a message to the hub
  *
- * Send a message given as a \ref Comm_Message to the connected hub after
+ * Send a message given as a Comm_Message to the connected hub after
  * packing. If a response is expected, block until the response is received and
  * return it.
  *
- * \param message A pointer to a #Comm_Message representing the message to be
+ * \param message A pointer to a Comm_Message representing the message to be
  * sent
  * \return If a response is expected, block until the response is available and
  * return the unpacked response. Otherwise, return NULL
