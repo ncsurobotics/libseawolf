@@ -154,29 +154,6 @@ void Seawolf_loadConfig(const char* filename) {
             Comm_setServer(value);
         } else if(strcmp(option, "Comm_port") == 0) {
             Comm_setPort(atoi(value));
-        } else if(strcmp(option, "Logging_replicateStdio") == 0) {
-            if(trueValue(value)) {
-                Logging_replicateStdio(true);
-            } else {
-                Logging_replicateStdio(false);
-            }
-        } else if(strcmp(option, "Logging_threshold") == 0) {
-            strlower(value);
-            if(strcmp(value, "debug") == 0) {
-                Logging_setThreshold(DEBUG);
-            } else if(strcmp(value, "info") == 0) {
-                Logging_setThreshold(INFO);
-            } else if(strcmp(value, "normal") == 0) {
-                Logging_setThreshold(NORMAL);
-            } else if(strcmp(value, "warning") == 0) {
-                Logging_setThreshold(WARNING);
-            } else if(strcmp(value, "error") == 0) {
-                Logging_setThreshold(ERROR);
-            } else if(strcmp(value, "critical") == 0) {
-                Logging_setThreshold(CRITICAL);
-            } else {
-                fprintf(stderr, "Invalid logging threshold value '%s'\n", value);
-            }
         } else {
             fprintf(stderr, "Unknown configuration option '%s'\n", option);
         }
