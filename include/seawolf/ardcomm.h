@@ -5,7 +5,7 @@
 #ifndef __SEAWOLF_ARDCOMM_INCLUDE_H
 #define __SEAWOLF_ARDCOMM_INCLUDE_H
 
-#include "seawolf.h"
+#include "seawolf/serial.h"
 
 /* Message types
 

@@ -5,7 +5,7 @@
 #ifndef __SEAWOLF_PID_INCLUDE_H
 #define __SEAWOLF_PID_INCLUDE_H
 
-#include "seawolf.h"
+#include "seawolf/timer.h"
 
 /**
  * PID

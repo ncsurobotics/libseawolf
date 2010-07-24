@@ -5,8 +5,9 @@
 #ifndef __SEAWOLF_DICTIONARY_INCLUDE_H
 #define __SEAWOLF_DICTIONARY_INCLUDE_H
 
-#include <stdint.h>
+#include "seawolf/list.h"
 
+#include <stdint.h>
 #include <pthread.h>
 
 /**

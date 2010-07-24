@@ -5,7 +5,9 @@
 #ifndef __SEAWOLF_QUEUE_INCLUDE_H
 #define __SEAWOLF_QUEUE_INCLUDE_H
 
-#include "seawolf.h"
+#include "seawolf/list.h"
+
+#include <pthread.h>
 
 /**
  * Queue
