@@ -3,11 +3,11 @@ include ../../build/config.base.mk
 include ../../$(CONFIG)
 
 CFLAGS += -I../../include/
-LDFLAGS += -L../ -lseawolf -lsqlite3
+LDFLAGS += -L../ -lseawolf
 
 INCLUDES= ../../include/seawolf/*.h ../../include/seawolf.h seawolf_hub.h
 
-SRC= config.c db.c hub.c logging.c netloop.c process.c var.c
+SRC= config.c hub.c logging.c netloop.c process.c var.c
 OBJ= $(SRC:.c=.o)
 
 all: $(HUB_NAME)

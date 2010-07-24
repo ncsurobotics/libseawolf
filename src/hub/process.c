@@ -4,7 +4,7 @@
 
 static int Hub_Process_comm(Comm_Message* message, Comm_Message** response, bool* authenticated) {
     char* supplied_password = NULL;
-    const char* actual_password;
+    char* actual_password;
 
     if(message->count == 3 && strcmp(message->components[1], "AUTH") == 0) {
         actual_password = Hub_Config_getOption("password");
@@ -25,8 +25,6 @@ static int Hub_Process_comm(Comm_Message* message, Comm_Message** response, bool
         } else {
             (*response)->components[1] = strdup("FAILURE");
         }
-        
-        free((char*)actual_password);
         
         if(*authenticated) {
             return RESPOND_TO_SENDER;

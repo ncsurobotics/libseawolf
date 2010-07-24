@@ -52,7 +52,7 @@
  *      style = "filled, rounded";
  *      color = "#eeeeee";
  *    }
- *    hub [label="{Hub server|{libseawolf | sqlite}}", fillcolor="#aaaaff"];
+ *    hub [label="{Hub server|{libseawolf | db}}", fillcolor="#aaaaff"];
  *  }
  * \enddot
  *
@@ -96,34 +96,119 @@
  *
  * The hub server is responsible for performing logging, variable storage, and
  * notification passing for applications and much of this functionality is
- * configurable. The hub server uses an <a href="http://sqlite.org">SQLite</a>
- * database which stores all configuration, variable definitions, and persistant
- * variable data. The database can be editted with the <tt>sqlite3</tt> command
- * line utility. The hub server uses three tables,
- *  - <tt>variables</tt> - The variables table stores the most recent value of persistent variables
- *  - <tt>variable_definitions</tt> - This table stores definitions of variables which the
- *    hub server makes available. Only variables defined in this table can be
- *    accessed by applications.
- *  - <tt>config</tt> - Configuration options used by the hub server
+ * configurable. The hub server requires a short configuration file and uses a
+ * simple flat-file database to store variable definitions and persistant
+ * variable values. All of these files are human readable and can be edited with
+ * a simple text editor.
  *
- * The <tt>variables</tt> table is not meant to be edited by hand and serves only as
- * persistent for the hub server. The valid options for the <tt>config</tt> table are
- *  - log_file - The specifies the log file for the hub to write log messages
- *    to. If this isn't specified the hub will log to its own standard output
- *  - password - The password for the hub server to use when authenticating
- *    clients. This option is required but may be left empty.
+ * \subsection hubconfig Configuration
  *
- * Each row in the <tt>variable_definitions</tt> table defines a new variable. The colums in this table are,
- *  - name - The name of the variable. This is a what should be passed to Var_get() and Var_set() calls.
- *  - default_value - This is the initial value of the variable after the hub
- *    server starts. If the variable is persistent then an existing value in the
- *    <tt>variables</tt> table will override this.
- *  - persistent - This boolean value specifies whether the variable should be
- *    persistent. Persistent variables retain their value if the hub is
- *    restarted.
- *  - readonly - This boolean value specifies if the variable should be read
- *    only. Read only options values are useful as configuration values shared
- *    between applications as well as defining shared constants.
+ * The hub server takes a number of run-time options which can be specified in a
+ * configuration file. When running the hub the -c command line argument can be
+ * used to explicitly give the location of a configuration file. If this is not
+ * given the hub will look for a .swhubrc file in the current users home
+ * directory and, failing that, try /etc/seawolf_hub.conf. If no configuration
+ * file can be found the the hub print a warning and fall back to its default
+ * internal configuration.
+ *
+ * The syntax of the configuration file is the same as other libseawolf
+ * configuration files and is outlined in the \ref Config module. Below is an
+ * example configuration file listing all valid options with their default values.
+ *
+ * \code
+ * #
+ * # Example configuration file
+ * ##
+ * 
+ * # Bind to localhost on port 31427
+ * bind_address = 127.0.0.1
+ * bind_port = 31427
+ *
+ * # Use an empty password
+ * password = 
+ *
+ * # The variable database and definitions files
+ * var_db = seawolf_var.db
+ * var_defs = seawolf_var.defs
+ *
+ * # No log file, print messages to standard output
+ * log_file = 
+ * log_level = NORMAL
+ * log_replicate_stdout = 1
+ * \endcode
+ *
+ * \subsection hubvardef Variable Definitions
+ * 
+ * The hub needs a list of valid variables definitions. These hub will load
+ * these definitions from the file given for var_defs in the configuration
+ * file. Each variable has associated with it a name, a default value, and two
+ * flags specifying whether the variable is peristent and readonly. Variable
+ * names can include any characters valid in a C sting except the '='
+ * character. A persistent variable will have its value saved into the varible
+ * database any time it is modified. When the hub starts it loads initial values
+ * for persistent variables from this database so that persistent variables are
+ * able to be restored after stopping and starting the hub. Readonly variable
+ * can not be altered from their default values. Below is an example variable
+ * definitions file,
+ *
+ * \code
+ * #
+ * # Example variable definitions
+ * ##
+ * 
+ * # NAME               = DEAFULT, PERSIST, READONLY
+ * Aft                  = 0.0,     0,       0
+ * CountDownStatus      = 0.0,     0,       0
+ * Depth                = 0.0,     0,       0
+ * DepthHeading         = 0.0,     0,       0
+ * DepthPID.d           = 0.0,     1,       0
+ * DepthPID.i           = 0.0,     1,       0
+ * DepthPID.p           = 0.0,     1,       0
+ * ...
+ *
+ * \endcode
+ * 
+ * A varible name goes to the left of the = and the comma separated values to
+ * the right of the = are default value, persistent, and readonly
+ * respectively. Persistent and readonly are boolean flags which should be set
+ * to either 1 or 0.
+ *
+ * \subsection hubvardb Variable Database
+ *
+ * The variable database stores the current values for persistent variables. The
+ * location is given by the var_db option in the configuration file. Typically
+ * this file won't be edited by hand, but it can be if needed. The hub may
+ * overrride any changes made to this file while it is running, so if changes
+ * are to be made to the variable database by hand, they should be made while
+ * the hub is not running. The format of the database is the same as other
+ * configuration files with variable names as the options and variables values
+ * as the configuration values. An example database is shown below,
+ *
+ * \code
+ * # VARIABLE           = VALUE
+ * DepthPID.d           = -0.2500
+ * DepthPID.i           = 0.5000
+ * DepthPID.p           = 20.0000
+ * ...
+ * \endcode
+ *
+ * \subsection hubrunning Running the Hub
+ *
+ * When you build and install libseawolf, by default the hub will be installed
+ * to /usr/local/bin as `seawolf-hub'. Running the hub is a simple matter of
+ * creating a configuration file and variable definitions file and then
+ * executing
+ *
+ * \code
+ * $ seawolf-hub -c seawolf.conf
+ * \endcode
+ *
+ * If you have placed you configuration file in one of the default locations
+ * described in \ref hubconfig then this can be shortened to just
+ *
+ * \code
+ * $ seawolf-hub
+ * \endcode
  *
  * \section components API Organization
  * 

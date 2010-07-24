@@ -4,6 +4,7 @@
 #include "seawolf_hub.h"
 
 #include <signal.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 static void Hub_catchSignal(int sig);
@@ -12,7 +13,12 @@ static void Hub_usage(char* arg0);
 
 void Hub_exitError(void) {
     Hub_Logging_log(INFO, "Terminating hub due to error condition");
-    exit(1);
+    exit(EXIT_FAILURE);
+}
+
+bool Hub_fileExists(const char* file) {
+    struct stat s;
+    return stat(file, &s) != -1;
 }
 
 static void Hub_catchSignal(int sig) {
@@ -23,7 +29,6 @@ static void Hub_catchSignal(int sig) {
 
 static void Hub_close(void) {
     Hub_Var_close();
-    Hub_DB_close();
     Hub_Logging_close();
     
     /* Util is part of the core libseawolf, does not require an _init() call,
@@ -32,22 +37,22 @@ static void Hub_close(void) {
 }
 
 static void Hub_usage(char* arg0) {
-    printf("Usage: %s [-h] [-f db]\n", arg0);
+    printf("Usage: %s [-h] [-c conf]\n", arg0);
 }
 
 int main(int argc, char** argv) {
     int opt;
-    char* db_file = NULL;
+    char* conf_file = NULL;
 
     /* Parse arguments list */
-    while((opt = getopt(argc, argv, ":hf:")) != -1) {
+    while((opt = getopt(argc, argv, ":hc:")) != -1) {
         switch(opt) {
         case 'h':
             Hub_usage(argv[0]);
             exit(EXIT_SUCCESS);
             break;
-        case 'f':
-            db_file = optarg;
+        case 'c':
+            conf_file = optarg;
             break;
         case ':':
             fprintf(stderr, "Option '%c' requires an argument\n", optopt);
@@ -71,22 +76,13 @@ int main(int argc, char** argv) {
     signal(SIGHUP, Hub_catchSignal);
     signal(SIGTERM, Hub_catchSignal);
 
-    /* Use argument as database file */
-    if(!db_file) {
-        db_file = DEFAULT_DB;
+    /* Use argument as configuration file */
+    if(conf_file) {
+        Hub_Config_loadConfig(conf_file);
     }
 
-    /* Set the DB file */
-    if(Hub_DB_setFile(db_file)) {
-        perror(Util_format("Unable to use database file %s", db_file));
-        exit(EXIT_FAILURE);
-    }
-    
-    /* Initialize subcomponents */
-    if(Hub_DB_init()) {
-        perror(Util_format("Failed to initialize database %s", db_file));
-        exit(EXIT_FAILURE);
-    }
+    /* Process configuration file */
+    Hub_Config_processConfig();
 
     Hub_Var_init();
     Hub_Logging_init();

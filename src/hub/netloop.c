@@ -114,8 +114,8 @@ void Hub_Net_mainLoop(void) {
     /* Initialize the connection structure to bind the the correct port on all
        interfaces */
     svr_addr.sin_family = AF_INET;
-    svr_addr.sin_addr.s_addr = 0; /* 0.0.0.0 - all interfaces */
-    svr_addr.sin_port = htons(COMM_PORT);
+    svr_addr.sin_addr.s_addr = inet_addr(Hub_Config_getOption("bind_address"));
+    svr_addr.sin_port = htons(atoi(Hub_Config_getOption("bind_port")));
     
     /* Create the socket */
     svr_sock = socket(AF_INET, SOCK_STREAM, 0);

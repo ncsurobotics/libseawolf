@@ -3,8 +3,8 @@ Prerequisites
 -------------
 
 To build libseawolf should require only a modern POSIX compliant system and GNU
-Make. If you wish to also build the Seawolf hub (which you likely do) you will
-also need Sqlite3 installed.
+Make. Additional tools are required to build the documentation (see "Building
+Documentation" below).
 
 
 
@@ -29,9 +29,9 @@ running make install, e.g.,
 Cross Compiling
 ---------------
 
-Support for building the library component for Blackfin systems running uCLinux
-is included in this standard distribution. The Blackfin toolchain must be
-present in the system path. To build run,
+Support for building the library component and hub for Blackfin systems running
+uCLinux is included in this standard distribution. The Blackfin toolchain must
+be present in the system path. To build run,
 
   CONFIG=build/config.bfin.mk make install
 
@@ -39,8 +39,8 @@ The library and includes will be installed into a top level folder called
 'bfin'. This can be changed in the same way as the prefix for standard builds.
 
 To crosscompile for other platforms the Blackfin configuration can be used as a
-starting point. The library component of libseawolf should be able to build on
-any platform with a complete POSIX environment.
+starting point. libseawolf should be able to build on any platform with a
+complete POSIX environment.
 
 
 

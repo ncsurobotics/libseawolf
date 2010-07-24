@@ -13,24 +13,21 @@ static bool initialized = false;
 static FILE* log_file = NULL;
 static int log_file_fd = STDOUT_FILENO;
 static char time_buffer[TIME_BUFFER_SIZE];
-static short min_log_level = NORMAL;
+static short min_log_level = DEBUG;
 static bool replicate_stdout = false;
 
 void Hub_Logging_init(void) {
     char* path = Hub_Config_getOption("log_file");
-    Hub_Var* var;
+    short tmp;
 
     /* Retrieve log level */
-    var = Hub_Var_get("LogLevel");
-    if(var) {
-        min_log_level = var->value;
+    tmp = Logging_getLevelFromName(Hub_Config_getOption("log_level"));
+    if(tmp != -1) {
+        min_log_level = tmp;
     }
 
     /* Replicate messages to standard output */
-    var = Hub_Var_get("LogReplicateStdout");
-    if(var) {
-        replicate_stdout = (var->value == 1.0);
-    }
+    replicate_stdout = Config_truth(Hub_Config_getOption("log_replicate_stdout"));
     
     if(path) {
         log_file_fd = open(path, O_RDWR|O_SYNC|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
@@ -38,7 +35,6 @@ void Hub_Logging_init(void) {
             Hub_Logging_log(ERROR, Util_format("Could not open log file: %s", strerror(errno)));
             log_file_fd = STDOUT_FILENO;
         }
-        free(path);
     } else {
         Hub_Logging_log(INFO, "No log file specified. Using standard output");
     }
