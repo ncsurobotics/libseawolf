@@ -20,7 +20,7 @@ clean:
 
 install uninstall:
 	cd src && $(MAKE) $@
-ifneq ($(STRIP $(HUB_NAME)),)
+ifneq ($(strip $(HUB_NAME)),)
 	cd src/hub/ && $(MAKE) $@
 endif
 
