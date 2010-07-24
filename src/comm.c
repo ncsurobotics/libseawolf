@@ -95,6 +95,11 @@ static int Comm_receiveThread(void);
 void Comm_init(void) {
     struct sockaddr_in addr;
 
+    if(comm_server == NULL) {
+        Logging_log(CRITICAL, "No Comm_server address is set!");
+        Seawolf_exitError();
+    }
+
     /* Build connection address */
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = inet_addr(comm_server);
