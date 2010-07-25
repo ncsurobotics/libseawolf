@@ -82,28 +82,6 @@ static int Serial_setParams(SerialPort sp) {
 }
 
 /**
- * \brief Open a virtual terminal device
- * \deprecated The use of virtual terminal devices is unsupported and has limited functionality
- *
- * Open a new virtual terminal (VTY) device
- *
- * \return A handler for the opened device
- */
-SerialPort Serial_openVTY(void) {
-    SerialPort sp = open("/dev/ptmx", O_RDWR | O_NOCTTY);
-    Serial_setParams(sp);
-    unlockpt(sp);
-    grantpt(sp);
-
-    /* Store device reference */
-    open_devices++;
-    devices = realloc(devices, open_devices * sizeof(SerialPort));
-    devices[open_devices-1] = sp;
-
-    return sp;
-}
-
-/**
  * \brief Open a serial port
  *
  * Open and return a handler for the given serial device

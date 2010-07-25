@@ -17,7 +17,6 @@ void Serial_init(void);
 void Serial_close(void);
 
 /* Open/close ports */
-SerialPort Serial_openVTY(void);
 SerialPort Serial_open(const char* device_path);
 int Serial_closePort(SerialPort sp);
 
