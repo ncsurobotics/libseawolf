@@ -118,7 +118,7 @@ void Hub_Config_processConfig(void) {
             /* Valid option, store value */
             Dictionary_set(config, option, value);
         } else {
-            Logging_log(WARNING, Util_format("Unknown configuration option '%s'", option));
+            Hub_Logging_log(WARNING, Util_format("Unknown configuration option '%s'", option));
         }
     }
 
