@@ -11,59 +11,29 @@
 #include <pthread.h>
 
 /**
- * This value should be a power of 2 less than or equal to 32. This will affect
- * the granularity of memory allocation but will inversely affect the
- * insert/retrieval performance such that it is log(n) with base
- * _DICTIONARY_NODE_BITS. e.g. The higher this value is the faster the tree will
- * be, but making it higher will make it less memory efficient. 8 is a good
- * value.
- */
-#define _DICTIONARY_NODE_BITS 8
-
-/**
- * Typedef for 32 bit hash
- */
-typedef uint32_t hash_t;
-
-/**
- * Number of branches per node
+ * Number of buckets to create by default
  * \private
  */
-#define _DICTIONARY_NODE_SIZE (2 << (_DICTIONARY_NODE_BITS - 1))
+#define DICTIONARY_INITIAL_BUCKETS 16
 
 /**
- * Number of levels in the tree
+ * The maximum number of buckets to allow
  * \private
  */
-#define _DICTIONARY_TREE_DEPTH ((sizeof(hash_t) * 8) / _DICTIONARY_NODE_BITS)
+#define DICTIONARY_MAXIMUM_BUCKETS 65536
 
 /**
- * Return the brach index for the given hash at each level i
+ * The average number items per bucket that must be reached for the dictionary
+ * to be rebuilt with a larger bucket count
  * \private
  */
-#define _DICTIONARY_HASH_INDEX(hash, i) ((hash_t)(((hash) >> (_DICTIONARY_NODE_BITS * (i))) & (_DICTIONARY_NODE_SIZE - 1)))
-
-/**
- * Gives the position of a node in a dictionary tree
- * \private
- */
-typedef enum {
-    /**
-     * Interior of the tree
-     */
-    INTERIOR,
-
-    /**
-     * At the edge of the tree
-     */
-    EXTERIOR
-} Dictionary_NodeType;
+#define DICTIONARY_LOAD_FACTOR 8
 
 /**
  * An item in a dictionary
  * \private
  */
-typedef struct {
+struct Dictionary_Item_s {
     /**
      * Key
      * \private
@@ -81,42 +51,37 @@ typedef struct {
      * \private
      */
     void* v;
-} Dictionary_Item;
-
-/**
- * Tree node in the dictionary
- *
- * \private
- */
-typedef struct {
-    /**
-     * Node type
-     * \private
-     */
-    Dictionary_NodeType nodetype;
 
     /**
-     * Branches in the tree which have children
+     * Pointer to next item in list
      * \private
      */
-    List* active_branches;
+    struct Dictionary_Item_s* next;
+};
 
-    /**
-     * Child branches
-     * \private
-     */
-    void* branches[_DICTIONARY_NODE_SIZE];
-} Dictionary_Node;
+typedef struct Dictionary_Item_s Dictionary_Item;
 
 /**
  * Dictionary object
  */
 typedef struct {
     /**
-     * Root node of the dictionary's tree
+     * Dictionary buckets
      * \private
      */
-    Dictionary_Node* root;
+    Dictionary_Item** buckets;
+
+    /**
+     * Number of buckets
+     * \private
+     */
+    unsigned int bucket_count;
+
+    /**
+     * Number of items in the dictionary
+     * \private
+     */
+    unsigned int item_count;
 
     /**
      * Dictionary mutex lock
@@ -130,6 +95,8 @@ typedef struct {
      */
     pthread_cond_t new_item;
 } Dictionary;
+
+typedef uint32_t hash_t;
 
 hash_t Dictionary_hash(const void* s, size_t n);
 

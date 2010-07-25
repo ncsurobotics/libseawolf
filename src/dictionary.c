@@ -5,14 +5,9 @@
 
 #include "seawolf.h"
 
-static void Dictionary_destroyHelper(Dictionary_Node* dn);
-static List* Dictionary_getBucket(Dictionary* dict, hash_t hash, bool create);
-static int Dictionary_findInBucket(List* bucket, const void* k, size_t k_size);
 static Dictionary_Item* Dictionary_getItem(Dictionary* dict, const void* k, size_t k_size);
 static Dictionary_Item* Dictionary_Item_new(const void* k, size_t k_size, void* v);
-static void Dictionary_Item_destroy(Dictionary_Item* di);
-static Dictionary_Node* Dictionary_Node_new(Dictionary_NodeType nodetype);
-static void Dictionary_Node_destroy(Dictionary_Node* dn);
+static void Dictionary_Item_destroy(Dictionary_Item* item);
 
 /**
  * \defgroup Dictionary Dictionary
@@ -54,8 +49,11 @@ Dictionary* Dictionary_new(void) {
         return NULL;
     }
 
-    dict->root = Dictionary_Node_new(INTERIOR);
-    if(dict->root == NULL) {
+    dict->bucket_count = DICTIONARY_INITIAL_BUCKETS;
+    dict->item_count = 0;
+    
+    dict->buckets = calloc(dict->bucket_count, sizeof(Dictionary_Item*));
+    if(dict->buckets == NULL) {
         free(dict);
         return NULL;
     }
@@ -66,54 +64,34 @@ Dictionary* Dictionary_new(void) {
     return dict;
 }
 
-/**
- * \brief Retrieve the bucket for a hash
- *
- * Each hash code resolves to a bucket at the edge of the tree. This function
- * finds, possibly creates, and returns a reference to this bucket
- *
- * \param dict The dictionary to search in
- * \param has The hash to use for the lookup
- * \param create If true, the bucket will be created if it doesn't exist as well
- * as any intermediate nodes needed. If false, NULL will be returned if the
- * bucket is not found
- * \return The bucket, or NULL if \a create if false and the bucket could not be
- * found
- */
-static List* Dictionary_getBucket(Dictionary* dict, hash_t hash, bool create) {
-    Dictionary_Node* dn = dict->root;
-    hash_t hash_part;
-    List* bucket;
+static void Dictionary_increaseBuckets(Dictionary* dict) {
+    Dictionary_Item** new_buckets;
+    Dictionary_Item* item;
+    Dictionary_Item* next;
+    unsigned int new_bucket_count = dict->bucket_count * 2;
+    unsigned int bucket;
+    
+    new_buckets = calloc(new_bucket_count, sizeof(Dictionary_Item*));
 
-    for(int i = 0; i < _DICTIONARY_TREE_DEPTH - 1; i++) {
-        hash_part = _DICTIONARY_HASH_INDEX(hash, i);
-        if(dn->branches[hash_part] == NULL) {
-            if(create) {
-                if(i < _DICTIONARY_TREE_DEPTH - 2) {
-                    dn->branches[hash_part] = Dictionary_Node_new(INTERIOR);
-                } else {
-                    dn->branches[hash_part] = Dictionary_Node_new(EXTERIOR);
-                }
-                List_append(dn->active_branches, dn->branches[hash_part]);
-            } else {
-                return NULL;
-            } 
-        }
-        dn = dn->branches[hash_part];
-    }
+    /* Move all items from the old buckets to the new buckets */
+    for(int i = 0; i < dict->bucket_count; i++) {
+        item = dict->buckets[i];
+        while(item) {
+            next = item->next;
 
-    hash_part = _DICTIONARY_HASH_INDEX(hash, _DICTIONARY_TREE_DEPTH - 1);
-    if(dn->branches[hash_part] == NULL) {
-        if(create) {
-            dn->branches[hash_part] = List_new();
-            List_append(dn->active_branches, dn->branches[hash_part]);
-        } else {
-            return NULL;
+            /* Move item */
+            bucket = Dictionary_hash(item->k, item->k_size) % new_bucket_count;
+            item->next = new_buckets[bucket];
+            new_buckets[bucket] = item;
+
+            /* Next item from the old bucket list */
+            item = next;
         }
     }
 
-    bucket = dn->branches[hash_part];
-    return bucket;
+    free(dict->buckets);
+    dict->buckets = new_buckets;
+    dict->bucket_count = new_bucket_count;
 }
 
 /**
@@ -127,27 +105,41 @@ static List* Dictionary_getBucket(Dictionary* dict, hash_t hash, bool create) {
  * \param v The value to set
  */
 void Dictionary_setData(Dictionary* dict, const void* k, size_t k_size, void* v) {
-    Dictionary_Item* di_new;
-    Dictionary_Item* di_temp;
+    Dictionary_Item* item_new;
     hash_t hash = Dictionary_hash(k, k_size);
-    List* bucket;
-    size_t bucket_size;
+    unsigned int bucket = hash % dict->bucket_count;
+    Dictionary_Item* item;
+    Dictionary_Item* last = NULL;
 
     pthread_mutex_lock(&dict->lock);
 
-    bucket = Dictionary_getBucket(dict, hash, true);
-    bucket_size = List_getSize(bucket);
-    for(int i = 0; i < bucket_size; i++) {
-        di_temp = List_get(bucket, i);
-        if(memcmp(k, di_temp->k, k_size) == 0) {
-            /* Update existing */
-            di_temp->v = v;
+    item = dict->buckets[bucket];
+    while(item) {
+        if(k_size == item->k_size && memcmp(k, item->k, k_size) == 0) {
+            /* Item already exists, update value */
+            item->v = v;
             goto release_locks;
         }
+        
+        last = item;
+        item = item->next;
     }
 
-    di_new = Dictionary_Item_new(k, k_size, v);
-    List_append(bucket, di_new);
+    /* Add item to list */
+    item_new = Dictionary_Item_new(k, k_size, v);
+    if(last == NULL) {
+        dict->buckets[bucket] = item_new;
+    } else {
+        last->next = item_new;
+    }
+
+    dict->item_count++;
+
+    /* Resize buckets if the load factor has been exceeded */
+    if(dict->item_count / dict->bucket_count > DICTIONARY_LOAD_FACTOR &&
+       dict->bucket_count < DICTIONARY_MAXIMUM_BUCKETS) {
+        Dictionary_increaseBuckets(dict);
+    }
 
  release_locks:
     pthread_cond_broadcast(&dict->new_item);
@@ -181,34 +173,6 @@ void Dictionary_set(Dictionary* dict, const char* k, void* v) {
 }
 
 /**
- * \brief Locate a key in a bucket
- *
- * Each hash code maps to a particular bucket in the tree. This function locates
- * a actual key within this bucket
- *
- * \param list The bucket to search
- * \param k The key to search for
- * \param k_size The size/length of the key
- * \return The index of the item in the bucket, or -1 if the item is not found
- */
-static int Dictionary_findInBucket(List* bucket, const void* k, size_t k_size) {
-    Dictionary_Item* di;
-    size_t bucket_size;
- 
-    /* Find key in bucket */
-    bucket_size = List_getSize(bucket);
-    for(int i = 0; i < bucket_size; i++) {
-        di = List_get(bucket, i);
-        if(memcmp(k, di->k, k_size) == 0) {
-            /* Key found */
-            return i;
-        }
-    }
-
-    return -1;
-}
-
-/**
  * \brief Retrieve an item object from a dictionary
  *
  * Get the item associated with the given key
@@ -221,19 +185,19 @@ static int Dictionary_findInBucket(List* bucket, const void* k, size_t k_size) {
  */
 static Dictionary_Item* Dictionary_getItem(Dictionary* dict, const void* k, size_t k_size) {
     hash_t hash = Dictionary_hash(k, k_size);
-    List* bucket;
-    int bucket_index;
-    void* v = NULL;
+    unsigned int bucket = hash % dict->bucket_count;
+    Dictionary_Item* item;
 
-    bucket = Dictionary_getBucket(dict, hash, false);
-    if(bucket != NULL) {
-        bucket_index = Dictionary_findInBucket(bucket, k, k_size);
-        if(bucket_index != -1) {
-            v = List_get(bucket, bucket_index);;
+    item = dict->buckets[bucket];
+    while(item) {
+        if(k_size == item->k_size && memcmp(k, item->k, k_size) == 0) {
+            return item;
         }
+        
+        item = item->next;
     }
 
-    return v;
+    return NULL;
 }
 
 /**
@@ -247,18 +211,18 @@ static Dictionary_Item* Dictionary_getItem(Dictionary* dict, const void* k, size
  * \return The value associated with the key or NULL if the key is not found
  */
 void* Dictionary_getData(Dictionary* dict, const void* k, size_t k_size) {
-    Dictionary_Item* di;
+    Dictionary_Item* item;
 
     pthread_mutex_lock(&dict->lock);
-    di = Dictionary_getItem(dict, k, k_size);
+    item = Dictionary_getItem(dict, k, k_size);
     pthread_mutex_unlock(&dict->lock);
 
-    if(di == NULL) {
+    if(item == NULL) {
         /* Invalid key */
         return NULL;
     }
 
-    return di->v;
+    return item->v;
 }
 
 /**
@@ -340,13 +304,13 @@ void Dictionary_waitFor(Dictionary* dict, const char* k) {
  */
 bool Dictionary_existsData(Dictionary* dict, const void* k, size_t k_size) {
     /* If a Dictionary_Item does not exist for the key then return false */
-    Dictionary_Item* di;
+    Dictionary_Item* item;
     
     pthread_mutex_lock(&dict->lock);
-    di = Dictionary_getItem(dict, k, k_size);
+    item = Dictionary_getItem(dict, k, k_size);
     pthread_mutex_unlock(&dict->lock);
 
-    if(di == NULL) {
+    if(item == NULL) {
         return false;
     }
     
@@ -392,23 +356,34 @@ bool Dictionary_exists(Dictionary* dict, const char* k) {
  */
 int Dictionary_removeData(Dictionary* dict, const void* k, size_t k_size) {
     hash_t hash = Dictionary_hash(k, k_size);
-    List* bucket;
-    int bucket_index;
-    int ret = -1;
+    unsigned int bucket = hash % dict->bucket_count;
+    Dictionary_Item* last = NULL;
+    Dictionary_Item* item;
+    int retval = -1;
 
     pthread_mutex_lock(&dict->lock);
 
-    bucket = Dictionary_getBucket(dict, hash, false);
-    if(bucket != NULL) {
-        bucket_index = Dictionary_findInBucket(bucket, k, k_size);
-        if(bucket_index != -1) {
-            Dictionary_Item_destroy(List_remove(bucket, bucket_index));
-            ret = 0;
+    item = dict->buckets[bucket];
+    while(item) {
+        if(k_size == item->k_size && memcmp(k, item->k, k_size) == 0) {
+            if(last) {
+                last->next = item->next;
+            } else {
+                dict->buckets[bucket] = item->next;
+            }
+
+            Dictionary_Item_destroy(item);
+            retval = 0;
+            dict->item_count--;
+            break;
         }
+        
+        last = item;
+        item = item->next;
     }
 
     pthread_mutex_unlock(&dict->lock);
-    return ret;
+    return retval;
 }
 
 /**
@@ -438,54 +413,26 @@ int Dictionary_remove(Dictionary* dict, const char* k) {
 }
 
 /**
- * \brief Helper for Dictionary_getKeys()
- *
- * Recrusively retrieve all keys from the dictionary
- *
- * \param dn The root dictionary node
- * \return A list of the dictionary's keys
- */
-static List* Dictionary_getKeysHelper(Dictionary_Node* dn) {
-    Dictionary_Node* dn_temp;
-    int active_branch_count = List_getSize(dn->active_branches);
-    List* keys = List_new();
-    List* temp_keys;
-    List* bucket;
-    int size;
-
-    if(dn->nodetype == EXTERIOR) {
-        for(int i = 0; i < active_branch_count; i++) {
-            bucket = List_get(dn->active_branches, i);
-            size = List_getSize(bucket);
-            for(int j = 0; j < size; j++) {
-                List_append(keys, ((Dictionary_Item*)List_get(bucket, j))->k);
-            }
-        }
-    } else {
-        for(int i = 0; i < active_branch_count; i++) {
-            dn_temp = List_get(dn->active_branches, i);
-            temp_keys = Dictionary_getKeysHelper(dn_temp);
-            size = List_getSize(temp_keys);
-            for(int j = 0; j < size; j++) {
-                List_append(keys, List_get(temp_keys, j));
-            }
-            List_destroy(temp_keys);
-        }
-    }
-
-    return keys;
-}
-
-/**
  * \brief Get the list of keys
  *
  * Return pointers to all the keys in the dictionary. The keys should not be freed
  *
- * \param dict The list to retrieve keys for
+ * \param dict The dictionary to retrieve keys for
  * \return List of the keys
  */
 List* Dictionary_getKeys(Dictionary* dict) {
-    return Dictionary_getKeysHelper(dict->root);
+    Dictionary_Item* item;
+    List* keys = List_new();
+    
+    for(int i = 0; i < dict->bucket_count; i++) {
+        item = dict->buckets[i];
+        while(item) {
+            List_append(keys, item->k);
+            item = item->next;
+        }
+    }
+
+    return keys;
 }
 
 /**
@@ -499,19 +446,20 @@ List* Dictionary_getKeys(Dictionary* dict) {
  * \return A new item object
  */
 static Dictionary_Item* Dictionary_Item_new(const void* k, size_t k_size, void* v) {
-    Dictionary_Item* di = malloc(sizeof(Dictionary_Item));
+    Dictionary_Item* item = malloc(sizeof(Dictionary_Item));
 
-    if(di == NULL) {
+    if(item == NULL) {
         return NULL;
     }
 
-    di->k = malloc(k_size);
-    di->k_size = k_size;
-    di->v = v;
+    item->k = malloc(k_size);
+    item->k_size = k_size;
+    item->v = v;
+    item->next = NULL;
 
-    memcpy(di->k, k, k_size);
+    memcpy(item->k, k, k_size);
 
-    return di;
+    return item;
 }
 
 /**
@@ -521,78 +469,9 @@ static Dictionary_Item* Dictionary_Item_new(const void* k, size_t k_size, void* 
  *
  * \param di The item to destroy
  */
-static void Dictionary_Item_destroy(Dictionary_Item* di) {
-    free(di->k);
-    free(di);
-}
-
-/**
- * \brief Create a new node
- *
- * Create a new node
- *
- * \param nodetype The type of the node
- * \return A new node
- */
-static Dictionary_Node* Dictionary_Node_new(Dictionary_NodeType nodetype) {
-    Dictionary_Node* dn = malloc(sizeof(Dictionary_Node));
-    if(dn == NULL) {
-        return NULL;
-    }
-    
-    dn->nodetype = nodetype;
-    dn->active_branches = List_new();
-
-    for(int i = 0; i < _DICTIONARY_NODE_SIZE; i++) {
-        dn->branches[i] = NULL;
-    }
-    
-    return dn;
-}
-
-/**
- * \brief Destroy a dictionary node
- *
- * Destroy a dictionary node
- *
- * \param dn The node to destroy
- */
-static void Dictionary_Node_destroy(Dictionary_Node* dn) {
-    List_destroy(dn->active_branches);
-    free(dn);
-}
-
-/**
- * \brief Helper for Dictionary_destroy()
- *
- * Recursively destroys the dictionary tree, freeing all memory allocated to it
- *
- * \param dn Root dictionary node
- */
-static void Dictionary_destroyHelper(Dictionary_Node* dn) {
-    Dictionary_Node* dn_next = NULL;
-    int active_branch_count = 0;
-
-    List* bucket = NULL;
-    int bucket_size = 0;
-
-    active_branch_count = List_getSize(dn->active_branches);
-
-    for(int i = 0; i < active_branch_count; i++) {
-        if(dn->nodetype == INTERIOR) {
-            dn_next = List_get(dn->active_branches, i);
-            Dictionary_destroyHelper(dn_next);
-        } else {
-            bucket = List_get(dn->active_branches, i);
-            bucket_size = List_getSize(bucket);
-            for(int j = 0; j < bucket_size; j++) {
-                Dictionary_Item_destroy(List_get(bucket, j));
-            }
-            List_destroy(bucket);
-        }
-    }
-
-    Dictionary_Node_destroy(dn);
+static void Dictionary_Item_destroy(Dictionary_Item* item) {
+    free(item->k);
+    free(item);
 }
 
 /**
@@ -603,7 +482,17 @@ static void Dictionary_destroyHelper(Dictionary_Node* dn) {
  * \param dict The dictionary to free
  */
 void Dictionary_destroy(Dictionary* dict) {
-    Dictionary_destroyHelper(dict->root);
+    Dictionary_Item* item;
+
+    for(int i = 0; i < dict->bucket_count; i++) {
+        while(dict->buckets[i]) {
+            item = dict->buckets[i];
+            dict->buckets[i] = item->next;
+            Dictionary_Item_destroy(item);
+        }
+    }
+
+    free(dict->buckets);
     free(dict);
 }
 
