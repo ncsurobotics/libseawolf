@@ -106,6 +106,8 @@ static void Hub_Var_readPersistentValues(void) {
         var_value = Dictionary_get(db, var_name);
 
         retval = sscanf(var_value, "%f", &value);
+        free(var_value);
+
         if(retval != 1) {
             Hub_Logging_log(ERROR, Util_format("Format error in variable database for variable '%s'", var_name));
             Hub_exitError();
@@ -124,6 +126,9 @@ static void Hub_Var_readPersistentValues(void) {
         /* Store value from file */
         var->value = value;
     }
+
+    List_destroy(var_names);
+    Dictionary_destroy(db);
 }
 
 static void Hub_Var_readDefinitions(void) {
@@ -176,6 +181,8 @@ static void Hub_Var_readDefinitions(void) {
         var_def = Dictionary_get(defs, var_name);
 
         retval = sscanf(var_def, "%f , %d , %d", &default_value, &persistent, &readonly);
+        free(var_def);
+
         if(retval != 3) {
             Hub_Logging_log(ERROR, Util_format("Format error in variable definition for variable '%s'", var_name));
             Hub_exitError();
@@ -208,10 +215,12 @@ static void Hub_Var_readDefinitions(void) {
             List_append(persistent_variables, new_var->name);
         }
     }
+
+    List_destroy(var_names);
+    Dictionary_destroy(defs);
 }
 
 void Hub_Var_init(void) {
-    var_cache = Dictionary_new();
     Hub_Var_readDefinitions();
 
     if(List_getSize(persistent_variables)) {
@@ -244,18 +253,27 @@ int Hub_Var_set(const char* name, double value) {
 }
 
 void Hub_Var_close(void) {
-    List* keys = Dictionary_getKeys(var_cache);
-    int count = List_getSize(keys);
-    char* key;
+    List* var_names;
+    char* var_name;
     Hub_Var* var;
 
-    for(int i = 0; i < count; i++) {
-        key = List_get(keys, i);
-        var = Dictionary_get(var_cache, key);
-        free(var->name);
-        free(var);
+    if(persistent_variables) {
+        Task_kill(db_flush_handle);
+        Task_wait(db_flush_handle);
+        List_destroy(persistent_variables);
     }
 
-    List_destroy(keys);
-    Dictionary_destroy(var_cache);
+    if(var_cache) {
+        var_names = Dictionary_getKeys(var_cache);
+        while(List_getSize(var_names)) {
+            var_name = List_remove(var_names, 0);
+            var = Dictionary_get(var_cache, var_name);
+            
+            free(var->name);
+            free(var);
+        }
+        
+        List_destroy(var_names);
+        Dictionary_destroy(var_cache);
+    }
 }

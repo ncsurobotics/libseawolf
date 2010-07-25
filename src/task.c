@@ -94,11 +94,16 @@ static TaskQueueNode* TaskQueue_remove(TaskQueue* tq, TaskQueueNode* node);
  */
 static void* Task_callWrapper(void* _args) {
     struct WrapperArgs* args = (struct WrapperArgs*) _args;
-    args->return_value = args->func();
+    struct WrapperArgs args_copy;
 
     if(args->free) {
+        args_copy = (*args);
         free(args);
+        args_copy.func();
+    } else {
+        args->return_value = args->func();
     }
+
     return NULL;
 }
 

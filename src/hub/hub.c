@@ -24,12 +24,25 @@ bool Hub_fileExists(const char* file) {
 static void Hub_catchSignal(int sig) {
     /* Caught signal, exit and properly shut down */
     Hub_Logging_log(CRITICAL, "Signal caught! Shutting down...");
+
+    if(sig == SIGTERM || sig == SIGINT) {
+        Hub_close();
+        exit(EXIT_SUCCESS);
+    }
+
     Hub_exitError();
 }
 
 static void Hub_close(void) {
+    static int closed = 0;
+    if(closed) {
+        return;
+    }
+    closed = 1;
+
     Hub_Var_close();
     Hub_Logging_close();
+    Hub_Config_close();
     
     /* Util is part of the core libseawolf, does not require an _init() call,
        but *does* require a _close() call */

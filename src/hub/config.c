@@ -71,7 +71,7 @@ void Hub_Config_processConfig(void) {
     /* Initialize config table with default options */
     config = Dictionary_new();
     for(int i = 0; i < sizeof(valid_options) / sizeof(valid_options[0]); i++) {
-        Dictionary_set(config, valid_options[i].option, valid_options[i].default_value);
+        Dictionary_set(config, valid_options[i].option, strdup(valid_options[i].default_value));
     }
 
     /* Locate a configuration file */
@@ -115,7 +115,8 @@ void Hub_Config_processConfig(void) {
         value = Dictionary_get(temp_config, option);
 
         if(Dictionary_exists(config, option)) {
-            /* Valid option, store value */
+            /* Valid option, free old value, store new value */
+            free(Dictionary_get(config, option));
             Dictionary_set(config, option, value);
         } else {
             Hub_Logging_log(WARNING, Util_format("Unknown configuration option '%s'", option));
@@ -129,4 +130,24 @@ void Hub_Config_processConfig(void) {
 char* Hub_Config_getOption(const char* config_key) {
     char* value = Dictionary_get(config, config_key);
     return value;
+}
+
+void Hub_Config_close(void) {
+    List* config_options;
+    char* config_option;
+    
+    if(config) {
+        config_options = Dictionary_getKeys(config);
+        while(List_getSize(config_options)) {
+            config_option = List_remove(config_options, 0);
+            free(Dictionary_get(config, config_option));
+        }
+
+        List_destroy(config_options);
+        Dictionary_destroy(config);
+    }
+
+    if(hub_config_file) {
+        free(hub_config_file);
+    }
 }
