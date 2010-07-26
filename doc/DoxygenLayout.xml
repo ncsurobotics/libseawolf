@@ -2,8 +2,8 @@
   <!-- Navigation index tabs for HTML output -->
   <navindex>
     <tab type="mainpage" visible="yes" title="Overview"/>
+    <tab type="pages" visible="yes" title="Additional Pages"/>
     <tab type="modules" visible="yes" title="API Reference"/>
-    <tab type="pages" visible="no" title=""/>
     <tab type="namespaces" visible="no" title="">
       <tab type="namespaces" visible="yes" title=""/>
       <tab type="namespacemembers" visible="yes" title=""/>
