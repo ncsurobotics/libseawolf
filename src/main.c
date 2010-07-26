@@ -242,6 +242,10 @@ void Seawolf_close(void) {
         }
         Queue_destroy(at_exit);
     }
+
+    if(seawolf_config_file) {
+        free(seawolf_config_file);
+    }
     
     /* Announce closing */
     Logging_log(INFO, "Closing");
