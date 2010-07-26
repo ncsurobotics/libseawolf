@@ -17,7 +17,7 @@ static short min_log_level = DEBUG;
 static bool replicate_stdout = false;
 
 void Hub_Logging_init(void) {
-    char* path = Hub_Config_getOption("log_file");
+    char* path;
     short tmp;
 
     /* Retrieve log level */
@@ -29,7 +29,10 @@ void Hub_Logging_init(void) {
     /* Replicate messages to standard output */
     replicate_stdout = Config_truth(Hub_Config_getOption("log_replicate_stdout"));
     
-    if(path) {
+    path = strdup(Hub_Config_getOption("log_file"));
+    Util_strip(path);
+
+    if(strcmp(path, "") != 0) {
         log_file_fd = open(path, O_RDWR|O_SYNC|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
         if(log_file_fd == -1) {
             Hub_Logging_log(ERROR, Util_format("Could not open log file: %s", strerror(errno)));
@@ -44,6 +47,7 @@ void Hub_Logging_init(void) {
         Hub_Logging_log(ERROR, Util_format("Unable to associated log file descriptor with file handle: %s", strerror(errno)));
     }
 
+    free(path);
     initialized = true;
 }
 

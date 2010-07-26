@@ -4,7 +4,7 @@
 
 static int Hub_Process_comm(Comm_Message* message, Comm_Message** response, bool* authenticated) {
     char* supplied_password = NULL;
-    char* actual_password;
+    const char* actual_password;
 
     if(message->count == 3 && strcmp(message->components[1], "AUTH") == 0) {
         actual_password = Hub_Config_getOption("password");

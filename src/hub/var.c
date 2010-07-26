@@ -12,7 +12,7 @@ static int do_flush_flag = 0;
 
 static int Hub_Var_dbFlusher(void) {
     FILE* tmp_db_file = NULL;
-    char* db = Hub_Config_getOption("var_db");
+    const char* db = Hub_Config_getOption("var_db");
     char* tmp_db = Util_format("%s.0", db);
     int persistent_variable_count = List_getSize(persistent_variables);
     char* var_name;
@@ -50,7 +50,7 @@ static void Hub_Var_flushPersistent(void) {
 }
 
 static void Hub_Var_readPersistentValues(void) {
-    char* var_db = Hub_Config_getOption("var_db");
+    const char* var_db = Hub_Config_getOption("var_db");
     Dictionary* db;
     Hub_Var* var;
     List* var_names;
@@ -132,7 +132,7 @@ static void Hub_Var_readPersistentValues(void) {
 }
 
 static void Hub_Var_readDefinitions(void) {
-    char* var_defs = Hub_Config_getOption("var_defs");
+    const char* var_defs = Hub_Config_getOption("var_defs");
     Dictionary* defs;
     Hub_Var* new_var;
     List* var_names;
@@ -141,7 +141,7 @@ static void Hub_Var_readDefinitions(void) {
     float default_value;
     int persistent, readonly;
     int retval;
-    
+
     if(var_defs == NULL || !Hub_fileExists(var_defs)) {
         Hub_Logging_log(ERROR, "Could not open variable definitions file. Is it specified in the configuration file?");
         Hub_exitError();

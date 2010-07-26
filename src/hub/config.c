@@ -127,7 +127,7 @@ void Hub_Config_processConfig(void) {
     Dictionary_destroy(temp_config);
 }
 
-char* Hub_Config_getOption(const char* config_key) {
+const char* Hub_Config_getOption(const char* config_key) {
     char* value = Dictionary_get(config, config_key);
     return value;
 }

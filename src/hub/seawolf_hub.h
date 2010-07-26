@@ -27,7 +27,7 @@ int Hub_Process_process(Comm_Message* message, Comm_Message** response, bool* au
 
 void Hub_Config_loadConfig(const char* filename);
 void Hub_Config_processConfig(void);
-char* Hub_Config_getOption(const char* config_key);
+const char* Hub_Config_getOption(const char* config_key);
 void Hub_Config_close(void);
 
 void Hub_Var_init(void);
