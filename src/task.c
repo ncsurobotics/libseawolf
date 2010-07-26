@@ -241,6 +241,7 @@ void Task_wait(Task_Handle task) {
 
 /**
  * \brief Create a new task
+ * \deprecated
  *
  * Create a new task associated with the given function that can be added to a
  * TaskQueue
@@ -267,6 +268,7 @@ Task* Task_new(int (*func)(void)) {
 
 /**
  * \brief Destroy a Task object
+ * \deprecated
  *
  * Free the memory allocated to the given Task object
  *
@@ -278,6 +280,7 @@ void Task_destroy(Task* task) {
 
 /**
  * \brief Run a Task
+ * \deprecated
  *
  * Run the function associated with the given Task object
  *
@@ -308,6 +311,9 @@ int Task_run(Task* task) {
 
 /**
  * \brief Create a new TaskQueue
+ * \deprecated "Task Queue" is a prime example of excessive abstraction. This
+ * entire interface does what could be replicated by a half dozen lines of code
+ * performing function calls. This code will be removed shortly.
  *
  * Create a new TaskQueue object
  *
@@ -328,6 +334,7 @@ TaskQueue* TaskQueue_new(void) {
 
 /**
  * \brief Destroy a TaskQueue
+ * \deprecated
  *
  * Destroy the given TaskQueue
  *
@@ -339,6 +346,7 @@ void TaskQueue_destroy(TaskQueue* tq) {
 
 /**
  * \brief Create a new TaskQueueNode
+ * \deprecated
  * 
  * Create a new TaskQueueNode
  *
@@ -357,6 +365,7 @@ static TaskQueueNode* TaskQueueNode_new(Task* task) {
 
 /**
  * \brief Destoy a TaskQueueNode
+ * \deprecated
  * 
  * Destoy a TaskQueueNode
  *
@@ -368,6 +377,7 @@ static void TaskQueueNode_destroy(TaskQueueNode* node) {
 
 /**
  * \brief Insert a TaskQueueNode
+ * \deprecated
  *
  * Insert a TaskQueueNode into a TaskQueue
  *
@@ -404,6 +414,7 @@ static void TaskQueue_insertAfter(TaskQueue* tq, TaskQueueNode* base, TaskQueueN
 
 /**
  * \brief Remove a TaskQueueNode
+ * \deprecated
  *
  * Remove a TaskQueueNode from a TaskQueue
  *
@@ -435,6 +446,7 @@ static TaskQueueNode* TaskQueue_remove(TaskQueue* tq, TaskQueueNode* node) {
 
 /**
  * \brief Append a task to a TaskQueue
+ * \deprecated
  *
  * Append the given Task to the TaskQueue
  *
@@ -448,6 +460,7 @@ void TaskQueue_addTask(TaskQueue* tq, Task* task) {
 
 /**
  * \brief Run a TaskQueue
+ * \deprecated
  *
  * Run a TaskQueue. This involves running all Task sequentially and requeueing
  * failed tasks if TASK_RETRY is set until the TaskQueue is emptied.
