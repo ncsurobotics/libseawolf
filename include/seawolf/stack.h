@@ -7,6 +7,7 @@
 
 /**
  * Stack
+ * \private
  */
 typedef struct {
     /**

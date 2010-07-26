@@ -9,6 +9,7 @@
 
 /**
  * Serial port handler
+ * \private
  */
 typedef int SerialPort;
 

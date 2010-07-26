@@ -10,6 +10,11 @@
 #include <pthread.h>
 
 /**
+ * \addtogroup Task
+ * \{
+ */
+
+/**
  * Allow the function to run to completion (no watchdog)
  */
 #define NO_TIMEOUT (-1.0)
@@ -25,7 +30,6 @@
 typedef struct {
     /**
      * Function to call
-     * \private
      */
     int (*func)(void);
 
@@ -41,13 +45,11 @@ typedef struct {
 
     /**
      * Number of times run
-     * \private
      */
     int runs;
 
     /**
      * Currently running
-     * \private
      */
     bool running;
 
@@ -56,6 +58,8 @@ typedef struct {
      */
     int return_value;
 } Task;
+
+/** \} */
 
 /**
  * TaskQueueNode
@@ -83,6 +87,7 @@ typedef struct TaskQueueNode_s {
 
 /**
  * TaskQueue
+ * \private
  */
 typedef struct {
     /**
@@ -106,6 +111,7 @@ typedef struct {
 
 /**
  * Task handle used to refer to background tasks
+ * \private
  */
 typedef pthread_t Task_Handle;
 

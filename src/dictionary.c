@@ -5,6 +5,25 @@
 
 #include "seawolf.h"
 
+/**
+ * Number of buckets to create by default
+ * \private
+ */
+#define DICTIONARY_INITIAL_BUCKETS 16
+
+/**
+ * The maximum number of buckets to allow
+ * \private
+ */
+#define DICTIONARY_MAXIMUM_BUCKETS 65536
+
+/**
+ * The average number items per bucket that must be reached for the dictionary
+ * to be rebuilt with a larger bucket count
+ * \private
+ */
+#define DICTIONARY_LOAD_FACTOR 8
+
 static Dictionary_Item* Dictionary_getItem(Dictionary* dict, const void* k, size_t k_size);
 static Dictionary_Item* Dictionary_Item_new(const void* k, size_t k_size, void* v);
 static void Dictionary_Item_destroy(Dictionary_Item* item);

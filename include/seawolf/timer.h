@@ -9,6 +9,7 @@
 
 /**
  * Timer
+ * \private
  */
 typedef struct {
     /**

@@ -8,6 +8,11 @@
 #include "comm.h"
 
 /**
+ * \addtogroup Notify
+ * \{
+ */
+
+/**
  * Match the filter on the whole message
  */
 #define FILTER_MATCH 0x01
@@ -31,6 +36,8 @@
  * If no filters are registered, default to dropping messages
  */
 #define NOTIFY_POLICY_DROP false
+
+/** \} */
 
 /* System control methods */
 void Notify_init(void);

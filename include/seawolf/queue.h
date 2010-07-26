@@ -11,6 +11,7 @@
 
 /**
  * Queue
+ * \private
  */
 typedef struct {
     /**

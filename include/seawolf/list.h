@@ -7,6 +7,7 @@
 
 /**
  * List
+ * \private
  */
 typedef struct {
     /**

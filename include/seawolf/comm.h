@@ -6,6 +6,11 @@
 #define __SEAWOLF_COMM_INCLUDE_H
 
 /**
+ * \addtogroup Comm
+ * \{
+ */
+
+/**
  * \brief An unpacked message
  *
  * The unpacked representation of a message. A message is associated with a
@@ -61,6 +66,8 @@ typedef struct {
      */
     char* data;
 } Comm_PackedMessage;
+
+/** \} */
 
 /**
  * Length of the binary header in all packed messages

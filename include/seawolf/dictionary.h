@@ -11,25 +11,6 @@
 #include <pthread.h>
 
 /**
- * Number of buckets to create by default
- * \private
- */
-#define DICTIONARY_INITIAL_BUCKETS 16
-
-/**
- * The maximum number of buckets to allow
- * \private
- */
-#define DICTIONARY_MAXIMUM_BUCKETS 65536
-
-/**
- * The average number items per bucket that must be reached for the dictionary
- * to be rebuilt with a larger bucket count
- * \private
- */
-#define DICTIONARY_LOAD_FACTOR 8
-
-/**
  * An item in a dictionary
  * \private
  */
@@ -63,6 +44,7 @@ typedef struct Dictionary_Item_s Dictionary_Item;
 
 /**
  * Dictionary object
+ * \private
  */
 typedef struct {
     /**
@@ -96,6 +78,10 @@ typedef struct {
     pthread_cond_t new_item;
 } Dictionary;
 
+/**
+ * Type returned by the Dictionary_hash function
+ * \private
+ */
 typedef uint32_t hash_t;
 
 hash_t Dictionary_hash(const void* s, size_t n);

@@ -23,10 +23,13 @@ static Comm_Message* Hub_Net_receiveMessage(int comm_socket) {
     uint16_t total_data_size;
     size_t n;
 
+    /* Read in first two bytes without removing them from the socket
+       buffer. Theses bytes give us the overall message length. */
     if(recv(comm_socket, &total_data_size, sizeof(uint16_t), MSG_WAITALL|MSG_PEEK) != sizeof(uint16_t)) {
         return NULL;
     }
 
+    /* Convert to short */
     total_data_size = ntohs(total_data_size);
 
     packed_message = Comm_PackedMessage_new();

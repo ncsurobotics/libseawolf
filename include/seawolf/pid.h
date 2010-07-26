@@ -9,6 +9,7 @@
 
 /**
  * PID
+ * \private
  */
 typedef struct {
     /**

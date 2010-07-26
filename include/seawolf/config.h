@@ -33,7 +33,7 @@
 #define CONFIG_EFILEACCESS -2
 
 /**
- * A parse error occured. See Config_getLineNumber() to determine the erroneous
+ * A parse error occured. Use Config_getLineNumber() to determine the erroneous
  * line
  */
 #define CONFIG_EPARSE -3
