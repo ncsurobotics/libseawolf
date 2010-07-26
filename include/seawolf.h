@@ -10,7 +10,7 @@
  *
  * Here you will find all documentation for the Seawolf core library
  * (<i>libseawolf</i>) and the Seawolf hub server (<i>hub server</i>). Together
- * these are refered to as the <i>Seawolf Framework</i> (SF). The framework
+ * these are referred to as the <i>Seawolf Framework</i> (SF). The framework
  * provides a foundation for building distributed software platforms for use in
  * robotics and other sensor/control systems. libseawolf provides numerous
  * utilities to ease development, and in part with the hub server, also provides
@@ -59,7 +59,7 @@
  * As can be seen, each application is built on top of libseawolf, and, when
  * running, all applications in the pool connect to a single hub
  * server. libseawolf handles all of the difficult work of communicating with
- * the hub server and provides an easy to use API for application developers
+ * the hub server and presents an easy to use API for application developers
  * providing shared variables, interprocess notifications, and centralized
  * logging.
  *
@@ -86,20 +86,19 @@
  * For most applications this is all the boilerplate code that is
  * neccessary. The first two lines in main() are responsible for loading a
  * configuration file and initializing the library. The configuration file
- * specifies the address and port of the hub server to connect to, as well as
- * the password to use when authenticating with the hub server. No other
- * configuration is done is this file. The argument passed to Seawolf_init()
- * specifies the name of the application. This name is primarily for logging
- * purposes.
+ * specifies the address and port of the hub server to connect to, the password
+ * to use when authenticating with the hub server, and options to control
+ * logging functionality. No other configuration is done is this file. The
+ * argument passed to Seawolf_init() specifies the name of the application. This
+ * name is primarily for logging purposes.
  *
  * \section hubserver Hub Server
  *
- * The hub server is responsible for performing logging, variable storage, and
- * notification passing for applications and much of this functionality is
- * configurable. The hub server requires a short configuration file and uses a
- * simple flat-file database to store variable definitions and persistant
- * variable values. All of these files are human readable and can be edited with
- * a simple text editor.
+ * The hub server is responsible for performing centralized logging, variable
+ * storage, and notification passing for applications. The hub server requires a
+ * short configuration file and uses a simple flat-file database to store
+ * variable definitions and persistant variable values. All of these files are
+ * human readable and can be edited with a simple text editor.
  *
  * \subsection hubconfig Configuration
  *
@@ -108,12 +107,13 @@
  * used to explicitly give the location of a configuration file. If this is not
  * given the hub will look for a .swhubrc file in the current users home
  * directory and, failing that, try /etc/seawolf_hub.conf. If no configuration
- * file can be found the the hub print a warning and fall back to its default
+ * file can be found the the hub print a warning and falls back to its default
  * internal configuration.
  *
  * The syntax of the configuration file is the same as other libseawolf
- * configuration files and is outlined in the \ref Config module. Below is an
- * example configuration file listing all valid options with their default values.
+ * configuration files and is outlined in the \ref Config "configuration"
+ * module. Below is an example configuration file listing all valid options with
+ * their default values.
  *
  * \code
  * #
@@ -127,9 +127,11 @@
  * # Use an empty password
  * password = 
  *
- * # The variable database and definitions files
- * var_db = seawolf_var.db
+ * # Location of the variable definitions file
  * var_defs = seawolf_var.defs
+ *
+ * # Location of the variable database (stores values for persistent variables)
+ * var_db = seawolf_var.db
  *
  * # No log file, print messages to standard output
  * log_file = 
@@ -139,17 +141,17 @@
  *
  * \subsection hubvardef Variable Definitions
  * 
- * The hub needs a list of valid variables definitions. These hub will load
- * these definitions from the file given for var_defs in the configuration
- * file. Each variable has associated with it a name, a default value, and two
- * flags specifying whether the variable is peristent and readonly. Variable
- * names can include any characters valid in a C sting except the '='
- * character. A persistent variable will have its value saved into the varible
- * database any time it is modified. When the hub starts it loads initial values
- * for persistent variables from this database so that persistent variables are
- * able to be restored after stopping and starting the hub. Readonly variable
- * can not be altered from their default values. Below is an example variable
- * definitions file,
+ * The hub reads a list of variable definitions from the file specified by the
+ * var_defs option in the configuration file. Only variables defined in this
+ * file can be access by applications and attempts to access undefined variables
+ * will result in an error and the client application being disconnected from
+ * the hub. A variable definition specifies a name, a default value, designates
+ * whether the variable should be persistent, and specifies if the variable
+ * should be readonly. Persistent variables are stored on disk in the variable
+ * database (specified by the var_db option in the configuration file) and
+ * therefore their values persist even if the hub should be stopped and
+ * restarted. The format of the variable definitions file is illustrated in the
+ * following example,
  *
  * \code
  * #
@@ -180,9 +182,8 @@
  * this file won't be edited by hand, but it can be if needed. The hub may
  * overrride any changes made to this file while it is running, so if changes
  * are to be made to the variable database by hand, they should be made while
- * the hub is not running. The format of the database is the same as other
- * configuration files with variable names as the options and variables values
- * as the configuration values. An example database is shown below,
+ * the hub is not running. The format of the database is similar to the
+ * configuration file and the definitions file,
  *
  * \code
  * # VARIABLE           = VALUE
@@ -194,7 +195,7 @@
  *
  * \subsection hubrunning Running the Hub
  *
- * When you build and install libseawolf, by default the hub will be installed
+ * By default, when you build and install libseawolf the hub will be installed
  * to /usr/local/bin as `seawolf-hub'. Running the hub is a simple matter of
  * creating a configuration file and variable definitions file and then
  * executing
@@ -204,7 +205,7 @@
  * \endcode
  *
  * If you have placed you configuration file in one of the default locations
- * described in \ref hubconfig then this can be shortened to just
+ * described \ref hubconfig "above" then this can be shortened to just
  *
  * \code
  * $ seawolf-hub

@@ -33,9 +33,8 @@ static void Seawolf_processConfig(void);
  * when making any calls before this is called.
  *
  * One of the first tasks of Seawolf_init() is to read a configuration file. If
- * no configuration file is specified then the default of /etc/seawolf.conf is
- * used. An alternate configuration file can be specified by making a call to
- * Seawolf_loadConfig() before calling Seawolf_init(). The environment variable
+ * no configuration file has been specified by a call to Seawolf_loadConfig()
+ * then the default of /etc/seawolf.conf is used. The environment variable
  * SW_CONFIG can also be used to specify a configuration file, and if it is set,
  * take precedence over a file specified by Seawolf_loadConfig(). This allows
  * for alternate configuration files to be easily specified during testing.
@@ -64,7 +63,7 @@ void Seawolf_init(const char* name) {
     /* Process the configuration file */
     Seawolf_processConfig();
 
-    /* Ensure shutdown during normal exit */
+    /* Ensure shutdown during exit */
     atexit(Seawolf_close);
 
     /* Call all initialization methods. Order here *is* important. Logging
@@ -85,9 +84,11 @@ void Seawolf_init(const char* name) {
  * Load the options in the given configuration file when Seawolf_init() is called
  *
  * The valid configuration options are,
- *  - Comm_server - This option specifies the IP address of hub server (default is 127.0.0.1)
- *  - Comm_port - The port of the hub server (default is 31427)
- *  - Comm_password - The password to authenticate with the hub server using (default is empty)
+ *  - comm_server - This option specifies the IP address of hub server (default is 127.0.0.1)
+ *  - comm_port - The port of the hub server (default is 31427)
+ *  - comm_password - The password to authenticate with the hub server using (default is empty)
+ *  - log_level - The lowest priority of log messages to log. Should be one of DEBUG, INFO, NORMAL, WARNING, ERROR, or CRITICAL (default is NORMAL)
+ *  - log_replicate_stdout - Replicate log messages to standard output (default is true)
  *
  * \param filename File to load configuration from
  */
@@ -249,7 +250,7 @@ bool Seawolf_closing(void) {
 /**
  * \brief Get the application name
  *
- * Return the name registered with the library with a call to Seawolf_init()
+ * Return the name passed to Seawolf_init()
  *
  * \return The registered application name
  */
