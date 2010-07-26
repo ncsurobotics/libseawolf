@@ -7,6 +7,12 @@
 
 #include <signal.h>
 
+/** Wrapper for a function to be called at exit. ISO C forbids functions to be
+    cast to void* so this little trick help us get around that limitation */
+typedef struct {
+    void (*func)(void);
+} Seawolf_AtExitWrapper;
+
 /** Registered application name */
 static char app_name[SEAWOLF_MAX_NAME_LEN];
 
@@ -15,6 +21,9 @@ static bool closed = false;
 
 /** Path to the configuration file */
 static char* seawolf_config_file = NULL;
+
+/** Queue of functions to call on exit */
+static Queue* at_exit = NULL;
 
 static void Seawolf_catchSignal(int sig);
 static void Seawolf_processConfig(void);
@@ -187,11 +196,36 @@ static void Seawolf_catchSignal(int sig) {
 }
 
 /**
+ * \brief Register a function to be called on exit
+ *
+ * Register the given function to be called when the library is shutting
+ * down. Multiple functions can be registered and will be called in FIFO order.
+ *
+ * \param func The function to call. Should take no arguments and return void
+ */
+void Seawolf_atExit(void (*func)(void)) {
+    Seawolf_AtExitWrapper* wrapper;
+
+    /* It is likely that atExit may be called before Seawolf_init so we'll
+       initialize the queue here ourselves */
+    if(at_exit == NULL) {
+        at_exit = Queue_new();
+    }
+
+    wrapper = malloc(sizeof(Seawolf_AtExitWrapper));
+    wrapper->func = func;
+
+    Queue_append(at_exit, wrapper);
+}
+
+/**
  * \brief Close the library
  *
  * Close the library and free any resources claimed by it
  */
 void Seawolf_close(void) {
+    Seawolf_AtExitWrapper* wrapper;
+
     /* Only close once */
     if(closed) {
         return;
@@ -199,6 +233,16 @@ void Seawolf_close(void) {
 
     closed = true;
 
+    /* Run atExit Queue */
+    if(at_exit) {
+        while(Queue_getSize(at_exit)) {
+            wrapper = Queue_pop(at_exit, false);
+            wrapper->func();
+            free(wrapper);
+        }
+        Queue_destroy(at_exit);
+    }
+    
     /* Announce closing */
     Logging_log(INFO, "Closing");
     

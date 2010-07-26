@@ -324,5 +324,6 @@ void Seawolf_exit(void);
 bool Seawolf_closing(void);
 char* Seawolf_getName(void);
 void Seawolf_loadConfig(const char* filename);
+void Seawolf_atExit(void (*func)(void));
 
 #endif // #ifndef __SEAWOLF_ROOT_INCLUDE_H
