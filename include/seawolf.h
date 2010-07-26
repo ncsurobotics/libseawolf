@@ -290,7 +290,7 @@
 #include <string.h>
 #include <stdint.h>
 
-/* Include all Seawolf III development headers */
+/* Include all Seawolf development headers */
 #include "seawolf/comm.h"
 #include "seawolf/logging.h"
 #include "seawolf/var.h"
@@ -310,13 +310,19 @@
 #include "seawolf/queue.h"
 #include "seawolf/dictionary.h"
 
+/**
+ * \addtogroup Main
+ * \{
+ */
+
 /** Default location of the configuration file */
 #define SEAWOLF_DEFAULT_CONFIG "/etc/seawolf.conf"
 
-/** Maximum length of an application name */
+/** Maximum length of an application name passed to Seawolf_init() */
 #define SEAWOLF_MAX_NAME_LEN 256
 
-/* Initialize and close */
+/** \} */
+
 void Seawolf_init(const char* name);
 void Seawolf_close(void);
 void Seawolf_exitError(void);
