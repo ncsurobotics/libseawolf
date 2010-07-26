@@ -53,10 +53,10 @@ void Seawolf_init(const char* name) {
 
     /* Choose configuration file */
     if(getenv("SW_CONFIG")) {
-        Logging_log(INFO, "Using configuration file specified in SW_CONFIG environment variable");
+        Logging_log(NORMAL, "Using configuration file specified in SW_CONFIG environment variable");
         Seawolf_loadConfig(getenv("SW_CONFIG"));
     } else if(seawolf_config_file == NULL) {
-        Logging_log(INFO, Util_format("Falling back to default config file at %s", SEAWOLF_DEFAULT_CONFIG));
+        Logging_log(NORMAL, Util_format("Falling back to default config file at %s", SEAWOLF_DEFAULT_CONFIG));
         Seawolf_loadConfig(SEAWOLF_DEFAULT_CONFIG);
     }
 
