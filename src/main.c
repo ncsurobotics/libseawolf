@@ -8,7 +8,7 @@
 #include <signal.h>
 
 /** Registered application name */
-static char app_name[256];
+static char app_name[SEAWOLF_MAX_NAME_LEN];
 
 /** Library closed/closing */
 static bool closed = false;
@@ -43,7 +43,8 @@ static void Seawolf_processConfig(void);
  */
 void Seawolf_init(const char* name) {
     /* Copy name */
-    strcpy(app_name, name);
+    strncpy(app_name, name, SEAWOLF_MAX_NAME_LEN);
+    app_name[SEAWOLF_MAX_NAME_LEN - 1] = '\0';
 
     /* Catch siginals and insure proper shutdown */
     signal(SIGINT, Seawolf_catchSignal);

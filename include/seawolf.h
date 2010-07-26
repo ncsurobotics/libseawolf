@@ -313,6 +313,9 @@
 /** Default location of the configuration file */
 #define SEAWOLF_DEFAULT_CONFIG "/etc/seawolf.conf"
 
+/** Maximum length of an application name */
+#define SEAWOLF_MAX_NAME_LEN 256
+
 /* Initialize and close */
 void Seawolf_init(const char* name);
 void Seawolf_close(void);
