@@ -112,31 +112,37 @@ static void* Task_watcher(void* _args) {
 /**
  * \brief Run a function with a timeout
  *
- * Watchdog on a function call. Returns WATCHDOG_TIMEOUT on timeout
+ * Run the given function with a timeout. If the function runs longer than the
+ * timeout allows, the function call will be terminated and this function will
+ * return
  *
- * \param timeout Number of seconds before returning WATCHDOG_TIMEOUT if the
- * function does not return sooner
- * \param func Function to call under the watchdog.
- * \return Returns the return value of the function or WATCHDOG_TIMEOUT in the
- * case of timeout
+ * \param func Function to call
+ * \param timeout Number of seconds before killing the function call and
+ * returning
+ * \param retval If not NULL, the return value of func will be stored here
+ * \return 0 if func returned before the timeout expired, or -1 if a timeout occured
  */
-int Task_watchdog(double timeout, int (*func)(void)) {
+int Task_watchdog(int (*func)(void), double timeout, int* retval) {
     pthread_t func_th;
     pthread_t watchdog_th;
-    struct WrapperArgs func_args = {func, WATCHDOG_TIMEOUT, false};
+    struct WrapperArgs func_args = {func, 0, false};
     struct WatcherArgs watchdog_args = {&func_th, timeout};
+    int timed_out = -1;
 
     pthread_create(&func_th, NULL, Task_callWrapper, &func_args);
     pthread_create(&watchdog_th, NULL, Task_watcher, &watchdog_args);
 
     /* Wait for main function - may be canceled by watcher */
-    pthread_join(func_th, NULL);
+    if(pthread_join(func_th, NULL) == 0) {
+        (*retval) = func_args.return_value;
+        timed_out = 0;
+    }
     
     /* Cancel and wait for watcher */
     pthread_cancel(watchdog_th);
     pthread_join(watchdog_th, NULL);
 
-    return func_args.return_value;
+    return timed_out;
 }
 
 /**
