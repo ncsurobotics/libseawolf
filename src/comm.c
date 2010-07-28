@@ -253,9 +253,10 @@ static int Comm_receiveThread(void) {
             /* Inbound notification */
             Notify_inputMessage(message);
         } else if(strcmp(message->components[0], "COMM") == 0) {
-            if(strcmp(message->components[1], "SHUTDOWN") == 0) {
+            if(strcmp(message->components[1], "KICKING") == 0) {
                 hub_shutdown = true;
-                Seawolf_exit();
+                Logging_log(ERROR, __Util_format("I've been kicked: %s", message->components[2]));
+                Seawolf_exitError();
             }
             Comm_Message_destroyUnpacked(message);
         } else {

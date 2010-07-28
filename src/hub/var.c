@@ -234,7 +234,7 @@ Hub_Var* Hub_Var_get(const char* name) {
     return var;
 }
 
-int Hub_Var_set(const char* name, double value) {
+int Hub_Var_setValue(const char* name, double value) {
     Hub_Var* var = Dictionary_get(var_cache, name);
     if(var == NULL) {
         return -1;

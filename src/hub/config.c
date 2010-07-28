@@ -10,6 +10,7 @@ typedef struct {
 } Hub_Config_Option;
 
 static bool Hub_Config_chooseConfigFile(void);
+static void Hub_Config_processConfig(void);
 
 static Dictionary* config = NULL;
 static char* hub_config_file = NULL;
@@ -23,6 +24,10 @@ static Hub_Config_Option valid_options[] = {{"bind_address"        , "127.0.0.1"
                                             {"log_file"            , ""                },
                                             {"log_replicate_stdout", "1"               },
                                             {"log_level"           , "NORMAL"          }};
+
+void Hub_Config_init(void) {
+    Hub_Config_processConfig();
+}
 
 void Hub_Config_loadConfig(const char* filename) {
     if(hub_config_file) {
@@ -62,7 +67,7 @@ static bool Hub_Config_chooseConfigFile(void) {
     return true;
 }
 
-void Hub_Config_processConfig(void) {
+static void Hub_Config_processConfig(void) {
     Dictionary* temp_config;
     List* options;
     char* option;

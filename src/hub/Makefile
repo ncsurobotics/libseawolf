@@ -7,7 +7,7 @@ LDFLAGS += -L../ -lseawolf
 
 INCLUDES= ../../include/seawolf/*.h ../../include/seawolf.h seawolf_hub.h
 
-SRC= config.c hub.c logging.c netloop.c process.c var.c
+SRC= config.c hub.c logging.c netio.c netloop.c process.c var.c
 OBJ= $(SRC:.c=.o)
 
 all: $(HUB_NAME)

@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 static void Hub_catchSignal(int sig);
+static int _Hub_close(void);
 static void Hub_close(void);
 static void Hub_usage(char* arg0);
 
@@ -16,37 +17,53 @@ void Hub_exitError(void) {
     exit(EXIT_FAILURE);
 }
 
+void Hub_exit(void) {
+    Hub_close();
+    exit(EXIT_SUCCESS);
+}
+
 bool Hub_fileExists(const char* file) {
     struct stat s;
     return stat(file, &s) != -1;
 }
 
 static void Hub_catchSignal(int sig) {
-    /* Caught signal, exit and properly shut down */
-    Hub_Logging_log(CRITICAL, "Signal caught! Shutting down...");
-
+    /* Caught a "nice" signal. Try to exit gracefully and properly */
     if(sig == SIGTERM || sig == SIGINT) {
-        Hub_close();
-        exit(EXIT_SUCCESS);
+        /* Run close in a detached thread to ensure memory for it is freed */
+        pthread_detach(Task_background(_Hub_close));
+        return;
     }
 
+    /* Hub considers other signals to be scary and respects their authoritah by
+       quickly laying down and dying */
+    Hub_Logging_log(CRITICAL, "Scary signal caught! Shutting down!");
     Hub_exitError();
 }
 
-static void Hub_close(void) {
-    static int closed = 0;
-    if(closed) {
-        return;
-    }
-    closed = 1;
+static int _Hub_close(void) {
+    Hub_close();
+    return 0;
+}
 
-    Hub_Var_close();
-    Hub_Logging_close();
-    Hub_Config_close();
-    
-    /* Util is part of the core libseawolf, does not require an _init() call,
-       but *does* require a _close() call */
-    Util_close();
+static void Hub_close(void) {
+    static pthread_mutex_t hub_close_lock = PTHREAD_MUTEX_INITIALIZER;
+    static bool closed = false;
+
+    pthread_mutex_lock(&hub_close_lock);
+    if(!closed) {
+        Hub_Logging_log(INFO, "Closing");
+        Hub_Var_close();
+        Hub_Net_close();
+        Hub_Logging_close();
+        Hub_Config_close();
+        
+        /* Util is part of the core libseawolf, does not require an _init() call,
+           but *does* require a _close() call */
+        Util_close();
+    }
+    closed = true;
+    pthread_mutex_unlock(&hub_close_lock);
 }
 
 static void Hub_usage(char* arg0) {
@@ -95,8 +112,7 @@ int main(int argc, char** argv) {
     }
 
     /* Process configuration file */
-    Hub_Config_processConfig();
-
+    Hub_Config_init();
     Hub_Var_init();
     Hub_Logging_init();
 
@@ -105,6 +121,9 @@ int main(int argc, char** argv) {
     
     /* Run the main network loop */
     Hub_Net_mainLoop();
+
+    /* Shutdown or wait for shutdown to complete */
+    Hub_close();
 
     return 0;
 }
