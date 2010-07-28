@@ -151,16 +151,17 @@ static void Comm_authenticate(void) {
         Comm_assignRequestID(auth_message);
         response = Comm_sendMessage(auth_message);
 
-        if(strcmp(response->components[1], "SUCCESS") == 0) {
+        if(response == NULL || strcmp(response->components[1], "SUCCESS") != 0) {
+            Logging_log(CRITICAL, "Failed to authenticate with hub server!");
+        } else {
             Comm_Message_destroy(auth_message);
             Comm_Message_destroyUnpacked(response);
             return;
-        } else {
-            Logging_log(CRITICAL, __Util_format("Unable to authenticate with comm server: %s", response->components[1]));
         }
     } else {
         Logging_log(CRITICAL, "No Comm_password set. Unable to connect to Comm server");
     }
+
     Seawolf_exitError();
 }
 
@@ -210,17 +211,27 @@ static int Comm_receiveThread(void) {
 
     while(initialized) {
         packed_message = Comm_receivePackedMessage();
+
+        /* Receive error */
         if(packed_message == NULL) {
             if(Seawolf_closing()) {
                 /* Library is closing and we've already been disconnected from
-                   the hub. Exit the main loop */
+                   the hub. Specify that the hub is gone and exit the main
+                   loop */
+                hub_shutdown = true;
                 break;
             }
 
             error_count++;
             if(error_count > MAX_RECEIVE_ERROR) {
-                Logging_log(CRITICAL, "Lost connection to hub, terminating!");
+                hub_shutdown = true;
+                Logging_log(CRITICAL, "Excessive read errors (lost connection to hub), terminating!");
                 Seawolf_exitError();
+
+                /* It's possible for Seawolf_exitError to have been called
+                   elsewhere which presents a race condition. If
+                   Seawolf_exitError returns then ensure we exit the loop */
+                break;
             }
 
             continue;
@@ -252,6 +263,11 @@ static int Comm_receiveThread(void) {
             Comm_Message_destroyUnpacked(message);
         }
     }
+
+    /* Wake up any stuck Comm_sendMessage call */
+    pthread_mutex_lock(&response_set_lock);
+    pthread_cond_broadcast(&new_response);
+    pthread_mutex_unlock(&response_set_lock);
     
     return 0;
 }
@@ -289,14 +305,23 @@ Comm_Message* Comm_sendMessage(Comm_Message* message) {
     /* Destroy sent message */
     Comm_PackedMessage_destroy(packed_message);
 
-    if(n == -1) {
+    /* Send error */
+    if(n < 0) {
+        hub_shutdown = true;
+        Logging_log(CRITICAL, "Unable to send message (lost connection to hub), terminating!");
         Seawolf_exitError();
+        return NULL;
     }
 
     /* Expect a response and wait for it */
     if(message->request_id != 0) {
         pthread_mutex_lock(&response_set_lock);
         while(response_set[message->request_id] == NULL) {
+            /* Woken up during shutdown. Return NULL */
+            if(hub_shutdown) {
+                return NULL;
+            }
+
             pthread_cond_wait(&new_response, &response_set_lock);
         }
 
@@ -564,7 +589,10 @@ void Comm_close(void) {
             free(message->components[0]);
             free(message->components[1]);
             Comm_Message_destroy(message);
-            Comm_Message_destroyUnpacked(response);
+
+            if(response) {
+                Comm_Message_destroyUnpacked(response);
+            }
         }
             
         shutdown(comm_socket, SHUT_RDWR);
