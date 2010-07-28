@@ -32,8 +32,8 @@ static char* level_names[] = {"DEBUG",
  */
 
 /**
- * \brief Initialize logging 
- * 
+ * \brief Initialize logging
+ *
  * Initialize the Logging component
  *
  * \private
@@ -93,7 +93,7 @@ short Logging_getLevelFromName(const char* log_level) {
     for(int i = 0; level_copy[i] != '\0'; i++) {
         level_copy[i] = toupper(level_copy[i]);
     }
-    
+
     /* Scan levels */
     for(level = DEBUG; level <= CRITICAL; level++) {
         if(strcmp(Logging_getLevelName(level), level_copy) == 0) {
@@ -101,7 +101,7 @@ short Logging_getLevelFromName(const char* log_level) {
             return level;
         }
     }
-    
+
     free(level_copy);
     return -1;
 }

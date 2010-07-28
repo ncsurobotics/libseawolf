@@ -1,7 +1,7 @@
 /**
  * \file
  */
- 
+
 #ifndef __SEAWOLF_COMM_INCLUDE_H
 #define __SEAWOLF_COMM_INCLUDE_H
 
@@ -21,7 +21,7 @@ typedef struct {
      * A request ID for the message. A hub always returns responses to requests
      * using the same ID as given in the request. In this way responses can be
      * paired with requests. The ID 0 is reserved for messages not expecting
-     * responses 
+     * responses
      */
     uint16_t request_id;
 

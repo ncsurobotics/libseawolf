@@ -9,16 +9,16 @@ static int Hub_Process_comm(Comm_Message* message, Comm_Message** response, Hub_
     if(message->count == 3 && strcmp(message->components[1], "AUTH") == 0) {
         actual_password = Hub_Config_getOption("password");
         supplied_password = message->components[2];
-        
+
         if(actual_password == NULL) {
             Hub_Logging_log(ERROR, "No password set! Refusing to authenticate clients!");
             return RESPOND_TO_NONE;
         }
-        
+
         *response = Comm_Message_new(2);
         (*response)->request_id = message->request_id;
         (*response)->components[0] = strdup("COMM");
-        
+
         if(strcmp(supplied_password, actual_password) == 0) {
             (*response)->components[1] = strdup("SUCCESS");
             client->state = CONNECTED;
@@ -27,7 +27,7 @@ static int Hub_Process_comm(Comm_Message* message, Comm_Message** response, Hub_
             client->state = KICKING;
             client->kick_reason = strdup("Authentication failure");
         }
-        
+
         return RESPOND_TO_SENDER;
     } else if(message->count == 2 && strcmp(message->components[1], "SHUTDOWN") == 0) {
         *response = Comm_Message_new(2);
@@ -100,7 +100,7 @@ static int Hub_Process_var(Comm_Message* message, Comm_Message** response, Hub_C
             client->state = KICKING;
             client->kick_reason = strdup("Invalid variable access");
         }
-        
+
         return RESPOND_TO_NONE;
     } else {
         /* Invalid request */

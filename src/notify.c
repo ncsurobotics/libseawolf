@@ -44,7 +44,7 @@ void Notify_init() {
     filters = malloc(FILTER_INCREMENT * sizeof(char*));
     notification_queue = Queue_new();
     initialized = true;
-} 
+}
 
 /**
  * \brief Set accept policy
@@ -63,7 +63,7 @@ void Notify_setPolicy(bool policy) {
  * \internal
  *
  * Provide a new message for the incoming notification queue
- * 
+ *
  * \param message New message
  */
 void Notify_inputMessage(Comm_Message* message) {
@@ -137,7 +137,7 @@ void Notify_send(char* action, char* param) {
 /**
  * \brief Filter a message
  *
- * Check a message to determine if it passes through the stored filters 
+ * Check a message to determine if it passes through the stored filters
  *
  * \param msg The message to check
  * \return True if the message matches a filter, false otherwise
@@ -213,7 +213,7 @@ static bool Notify_check_filter(char* msg) {
 
 /**
  * \brief Register a new filter
- * 
+ *
  * Register a new filter with the notification system. Incoming messages must
  * match a filter in order to be returned by Notify_get(). If no filters are
  * active then messages are accepted or denied based on the accept policy (see
@@ -245,7 +245,7 @@ void Notify_filter(int filter_type, char* filter) {
 
         return;
     }
-    
+
     /* Ran out of room for filters. Increase space */
     if(filters_n && (filters_n % FILTER_INCREMENT) == 0) {
         filters = realloc(filters, (filters_n + FILTER_INCREMENT) * sizeof(char*));
@@ -275,10 +275,10 @@ void Notify_close() {
         for(int i = 0; i < filters_n; i++) {
             free(filters[i]);
         }
-        
+
         /* Free the filters arrays */
         free(filters);
-        
+
         /* Free remaining messages */
         while((msg = Queue_pop(notification_queue, false)) != NULL) {
             free(msg);

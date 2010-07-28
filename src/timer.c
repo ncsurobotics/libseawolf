@@ -57,7 +57,7 @@ Timer* Timer_new(void) {
 double Timer_getDelta(Timer* tm) {
     struct timespec now;
     double diff;
-    
+
     clock_gettime(CLOCK_REALTIME, &now);
     diff = _TIMESPEC_DIFF(tm->last, now);
     tm->last = now;
@@ -76,7 +76,7 @@ double Timer_getDelta(Timer* tm) {
 double Timer_getTotal(Timer* tm) {
     struct timespec now;
     double diff;
-    
+
     clock_gettime(CLOCK_REALTIME, &now);
     diff = _TIMESPEC_DIFF(tm->base, now);
 
@@ -100,7 +100,7 @@ void Timer_reset(Timer* tm) {
  * \brief Destroy the timer
  *
  * Free the memory associated with the timer
- * 
+ *
  * \param tm The timer to free
  */
 void Timer_destroy(Timer* tm) {

@@ -24,19 +24,19 @@ static int Hub_Var_dbFlusher(void) {
             pthread_cond_wait(&do_flush, &flush_lock);
         }
         do_flush_flag = 0;
-        
+
         tmp_db_file = fopen(tmp_db, "w");
         if(tmp_db_file == NULL) {
             Hub_Logging_log(ERROR, "Unable to flush database!");
         }
-        
+
         fprintf(tmp_db_file, "# %-18s = %s\n", "VARIABLE", "VALUE");
         for(int i = 0; i < persistent_variable_count; i++) {
             var_name = List_get(persistent_variables, i);
             var = Dictionary_get(var_cache, var_name);
             fprintf(tmp_db_file, "%-20s = %.4f\n", var_name, var->value);
         }
-        
+
         fclose(tmp_db_file);
         rename(tmp_db, db);
     }
@@ -268,11 +268,11 @@ void Hub_Var_close(void) {
         while(List_getSize(var_names)) {
             var_name = List_remove(var_names, 0);
             var = Dictionary_get(var_cache, var_name);
-            
+
             free(var->name);
             free(var);
         }
-        
+
         List_destroy(var_names);
         Dictionary_destroy(var_cache);
     }

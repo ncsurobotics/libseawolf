@@ -57,7 +57,7 @@ static void Hub_close(void) {
         Hub_Net_close();
         Hub_Logging_close();
         Hub_Config_close();
-        
+
         /* Util is part of the core libseawolf, does not require an _init() call,
            but *does* require a _close() call */
         Util_close();
@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
             break;
         }
     }
-    
+
     /* Please *ignore* SIGPIPE. It will cause the program to close in the case
        of writing to a closed socket. We handle this ourselves. */
     signal(SIGPIPE, SIG_IGN);
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
 
     /* Ensure shutdown during normal exit */
     atexit(Hub_close);
-    
+
     /* Run the main network loop */
     Hub_Net_mainLoop();
 

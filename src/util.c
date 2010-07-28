@@ -69,7 +69,7 @@ char* Util_format(char* format, ...) {
     bool found = false;
     size_t length;
     int i;
-    
+
     for(i = 0; i < buffer_count; i++) {
         if(format_buffers[i].id == pid) {
             found = true;
@@ -117,7 +117,7 @@ char* __Util_format(char* format, ...) {
     bool found = false;
     size_t length;
     int i;
-    
+
     for(i = 0; i < buffer_count_internal; i++) {
         if(format_buffers_internal[i].id == pid) {
             found = true;

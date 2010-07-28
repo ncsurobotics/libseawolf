@@ -32,7 +32,7 @@ static struct termios* default_conf = NULL;
  */
 
 /**
- * \brief Initialize the Serial component of libseawolf 
+ * \brief Initialize the Serial component of libseawolf
  * \private
  */
 void Serial_init(void) {
@@ -40,7 +40,7 @@ void Serial_init(void) {
 }
 
 /**
- * \brief Set all standard options on the serial port 
+ * \brief Set all standard options on the serial port
  *
  * Called by Serial_open* to initialize a serial port and set all default
  * options on it. The port is placed into a mode equivalent to 8 data bits, one
@@ -68,7 +68,7 @@ static int Serial_setParams(SerialPort sp) {
     /* Set speeds */
     cfsetispeed(&term_conf, B9600);
     cfsetospeed(&term_conf, B9600);
-    
+
     Serial_flush(sp);
 
     /* Push to device immediately */
@@ -124,7 +124,7 @@ SerialPort Serial_open(const char* device_path) {
  * \return -1 on failure
  */
 int Serial_closePort(SerialPort sp) {
-    int return_value; 
+    int return_value;
 
     /* Locate the device in the local device list so it can be removed */
     for(int i = 0; i < open_devices; i++) {
@@ -156,7 +156,7 @@ int Serial_closePort(SerialPort sp) {
 
 /**
  * \brief Set the baud rate
- * 
+ *
  * Set the baud rate for a serial device. Default is 9600 baud
  *
  * \param sp A handler for the serial port to set the buad rate for
@@ -224,7 +224,7 @@ void Serial_setBaud(SerialPort sp, int baud) {
     /* Set speeds */
     cfsetispeed(&term_conf, real_baud);
     cfsetospeed(&term_conf, real_baud);
-    
+
     /* Push settings changes to device immediately */
     Serial_flush(sp);
     tcsetattr(sp, TCSANOW, &term_conf);
@@ -273,7 +273,7 @@ void Serial_setNonBlocking(SerialPort sp) {
  * \deprecated This function is completely useless and ineffective. It should
  * not be used; determining if a serial port is "ready" is high application
  * particular
- * 
+ *
  * Determine if a serial port is "ready" by probing it and attempting to receive
  * data.
  *
@@ -293,7 +293,7 @@ bool Serial_isReady(SerialPort sp) {
     /* Check for available data */
     Util_usleep(0.25);
     n = read(sp, &a, 1);
-    
+
     /* Unset non-blocking */
     fcntl(sp, F_SETFL, 0);
 
@@ -369,7 +369,7 @@ int Serial_get(SerialPort sp, void* buffer, size_t count) {
     struct pollfd fd = {.fd = sp, .events = POLLRDNORM};
     int blocking = (~fcntl(sp, F_GETFL)) & O_NONBLOCK;
     unsigned char* buffer_c = (unsigned char*) buffer;
-    size_t n; 
+    size_t n;
 
     while(count > 0) {
         if(blocking) {
@@ -384,7 +384,7 @@ int Serial_get(SerialPort sp, void* buffer, size_t count) {
         count -= n;
         buffer_c += n;
     }
-    
+
     return 0;
 }
 
@@ -449,7 +449,7 @@ void Serial_setDTR(SerialPort sp, int value) {
         /* Clear DTR */
         base &= ~TIOCM_DTR;
     }
-    
+
     ioctl(sp, TIOCMSET, &base);
 }
 
@@ -481,7 +481,7 @@ void Serial_close(void) {
         for(int i = 0; i < open_devices; i++) {
             Serial_closePort(devices[i]);
         }
-        
+
         /* Free the list of devices */
         free(devices);
     }

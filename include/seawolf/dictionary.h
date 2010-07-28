@@ -1,7 +1,7 @@
 /**
  * \file
  */
- 
+
 #ifndef __SEAWOLF_DICTIONARY_INCLUDE_H
 #define __SEAWOLF_DICTIONARY_INCLUDE_H
 

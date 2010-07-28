@@ -246,10 +246,10 @@ void Seawolf_close(void) {
     if(seawolf_config_file) {
         free(seawolf_config_file);
     }
-    
+
     /* Announce closing */
     Logging_log(INFO, "Closing");
-    
+
     Serial_close();
     Logging_close();
     Var_close();

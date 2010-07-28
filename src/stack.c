@@ -28,11 +28,11 @@
  */
 Stack* Stack_new(void) {
     Stack* stack = malloc(sizeof(Stack));
-    
+
     if(stack == NULL) {
         return NULL;
     }
-    
+
     stack->base = (void**) malloc(sizeof(void*) * STACK_BLOCK_SIZE);
     if(stack->base == NULL) {
         free(stack);

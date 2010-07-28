@@ -20,7 +20,7 @@ static List* clients = NULL;
 /* Server socket */
 static int svr_sock = 0;
 
-/* Server socket bind address */ 
+/* Server socket bind address */
 struct sockaddr_in svr_addr;
 
 /* Flag to keep Hub_mainLoop running */
@@ -73,7 +73,7 @@ static void Hub_Net_initServerSocket(void) {
     svr_addr.sin_family = AF_INET;
     svr_addr.sin_addr.s_addr = inet_addr(Hub_Config_getOption("bind_address"));
     svr_addr.sin_port = htons(atoi(Hub_Config_getOption("bind_port")));
-    
+
     /* Create the socket */
     svr_sock = socket(AF_INET, SOCK_STREAM, 0);
     if(svr_sock == -1) {
@@ -128,7 +128,7 @@ void Hub_Net_close(void) {
 }
 
 void Hub_Net_mainLoop(void) {
-    
+
     /* Used to set the SO_RCVTIMEO (receive timeout) socket option on client
        sockets. 250 milliseconds */
     const struct timeval client_timeout = {.tv_sec = 0, .tv_usec = 250 * 1000};
@@ -181,10 +181,10 @@ void Hub_Net_mainLoop(void) {
 
     /* Create and ready the server socket */
     Hub_Net_initServerSocket();
-    
+
     /* Begin accepting connections */
     Hub_Logging_log(INFO, "Accepting client connections");
-    
+
     /* Start sending/recieving messages */
     while(run_mainloop) {
         /* Save a copy of the current number of clients */
@@ -236,17 +236,17 @@ void Hub_Net_mainLoop(void) {
                 shutdown(client_new, SHUT_RDWR);
             } else {
                 Hub_Logging_log(DEBUG, "Accepted new client connection");
-                
+
                 /* Set a timeout on receive operations to keep broken client
                    connections from deadlocking the hub */
                 setsockopt(client_new, SOL_SOCKET, SO_RCVTIMEO, &client_timeout, sizeof(client_timeout));
-                
+
                 client = malloc(sizeof(Hub_Client));
                 client->sock = client_new;
                 client->state = UNAUTHENTICATED;
                 client->name = NULL;
                 client->kick_reason = NULL;
-                
+
                 List_append(clients, client);
             }
 
@@ -264,10 +264,10 @@ void Hub_Net_mainLoop(void) {
                     /* It appears the client has died. Skip it and move on */
                     continue;
                 }
-                
+
                 /* Process message */
                 action = Hub_Process_process(client_message, &response, client);
-                
+
                 if(action == RESPOND_TO_SENDER || (action == SHUTDOWN_SENDER && response != NULL)) {
                     n = Hub_Net_sendMessage(client, response);
                     if(n < 0 && client->state != DEAD) {

@@ -49,11 +49,11 @@ Comm_Message* Hub_Net_receiveMessage(Hub_Client* client) {
         }
         received += n;
     }
-            
+
     /* Unpack message and destroy packed message */
     message = Comm_unpackMessage(packed_message);
     Comm_PackedMessage_destroy(packed_message);
-    
+
     return message;
 
  receive_error:
@@ -88,7 +88,7 @@ int Hub_Net_sendMessage(Hub_Client* client, Comm_Message* message) {
 
     /* Send packed message */
     n = Hub_Net_sendPackedMessage(client, packed_message);
-    
+
     /* Destroy sent message */
     Comm_PackedMessage_destroy(packed_message);
 

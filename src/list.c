@@ -28,11 +28,11 @@
  */
 List* List_new(void) {
     List* list = malloc(sizeof(List));
-    
+
     if(list == NULL) {
         return NULL;
     }
-    
+
     list->base = (void**) malloc(sizeof(void*) * LIST_BLOCK_SIZE);
     if(list->base == NULL) {
         free(list);
@@ -64,7 +64,7 @@ void List_insert(List* list, void* v, int n) {
     for(int i = list->items; i > n; i--) {
         list->base[i] = list->base[i-1];
     }
-    
+
     list->base[n] = v;
     list->items++;
 }
@@ -162,7 +162,7 @@ int List_indexOf(List* list, void* v) {
             return i;
         }
     }
-    
+
     return -1;
 }
 
@@ -193,7 +193,7 @@ List* List_copy(List* list) {
     if(new_list == NULL) {
         return NULL;
     }
-    
+
     new_list->items = list->items;
     new_list->space = list->space;
 
@@ -203,14 +203,14 @@ List* List_copy(List* list) {
         free(new_list);
         return NULL;
     }
-    
+
     memcpy(new_list->base, list->base, sizeof(void*) * list->space);
     return new_list;
 }
 
 /**
  * \brief String comparitor
- * 
+ *
  * A string comparitor
  * \sa List_sort
  *
@@ -226,7 +226,7 @@ int List_compareString(void* _s1, void* _s2) {
 
 /**
  * \brief Integer comparitor
- * 
+ *
  * An integer comparitor
  * \sa List_sort
  *
@@ -288,7 +288,7 @@ void List_sort(List* list, int (*cmp)(void*, void*)) {
     memcpy(list->base, less->base, sizeof(void*) * less_size);
     memcpy(list->base + less_size + 1, more->base, sizeof(void*) * more_size);
     list->base[less_size] = reference;
-    
+
     /* Destroy parts */
     List_destroy(less);
     List_destroy(more);

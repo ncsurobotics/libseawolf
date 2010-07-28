@@ -119,17 +119,17 @@ Dictionary* Config_readFile(const char* filename) {
                 break;
             }
         }
-        
+
         /* Never found '=' in the line */
         if(option == value) {
             config_errno = CONFIG_EPARSE;
             goto config_error;
         }
-        
+
         /* Strip spaces from components */
         Util_strip(option);
         Util_strip(value);
-        
+
         /* Store the pair */
         Dictionary_set(config, option, strdup(value));
     }
@@ -148,7 +148,7 @@ Dictionary* Config_readFile(const char* filename) {
         List_destroy(options);
         Dictionary_destroy(config);
     }
-    
+
     if(config_file != NULL) {
         fclose(config_file);
     }
@@ -170,7 +170,7 @@ int Config_getError(void) {
 
 /**
  * \brief Get the line number
- * 
+ *
  * Get the line number at the end of the last call to Config_readFile(). This can
  * be used to provide useful feedback in the event of a parsing error.
  *
@@ -193,18 +193,18 @@ int Config_getLineNumber(void) {
 bool Config_truth(const char* value) {
     char* value_copy = strdup(value);
     bool retval;
-    
+
     /* Convert to lower case */
     for(int i = 0; value_copy[i] != '\0'; i++) {
         value_copy[i] = tolower(value_copy[i]);
     }
-    
+
     /* Check for common values */
     retval = ((strcmp(value_copy, "1") == 0) ||
               (strcmp(value_copy, "true") == 0) ||
               (strcmp(value_copy, "yes") == 0) ||
               (strcmp(value_copy, "on") == 0));
-    
+
     free(value_copy);
     return retval;
 }

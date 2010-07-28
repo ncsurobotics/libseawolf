@@ -70,7 +70,7 @@ Dictionary* Dictionary_new(void) {
 
     dict->bucket_count = DICTIONARY_INITIAL_BUCKETS;
     dict->item_count = 0;
-    
+
     dict->buckets = calloc(dict->bucket_count, sizeof(Dictionary_Item*));
     if(dict->buckets == NULL) {
         free(dict);
@@ -89,7 +89,7 @@ static void Dictionary_increaseBuckets(Dictionary* dict) {
     Dictionary_Item* next;
     unsigned int new_bucket_count = dict->bucket_count * 2;
     unsigned int bucket;
-    
+
     new_buckets = calloc(new_bucket_count, sizeof(Dictionary_Item*));
 
     /* Move all items from the old buckets to the new buckets */
@@ -139,7 +139,7 @@ void Dictionary_setData(Dictionary* dict, const void* k, size_t k_size, void* v)
             item->v = v;
             goto release_locks;
         }
-        
+
         last = item;
         item = item->next;
     }
@@ -212,7 +212,7 @@ static Dictionary_Item* Dictionary_getItem(Dictionary* dict, const void* k, size
         if(k_size == item->k_size && memcmp(k, item->k, k_size) == 0) {
             return item;
         }
-        
+
         item = item->next;
     }
 
@@ -324,7 +324,7 @@ void Dictionary_waitFor(Dictionary* dict, const char* k) {
 bool Dictionary_existsData(Dictionary* dict, const void* k, size_t k_size) {
     /* If a Dictionary_Item does not exist for the key then return false */
     Dictionary_Item* item;
-    
+
     pthread_mutex_lock(&dict->lock);
     item = Dictionary_getItem(dict, k, k_size);
     pthread_mutex_unlock(&dict->lock);
@@ -332,7 +332,7 @@ bool Dictionary_existsData(Dictionary* dict, const void* k, size_t k_size) {
     if(item == NULL) {
         return false;
     }
-    
+
     /* Key exists */
     return true;
 }
@@ -396,7 +396,7 @@ int Dictionary_removeData(Dictionary* dict, const void* k, size_t k_size) {
             dict->item_count--;
             break;
         }
-        
+
         last = item;
         item = item->next;
     }
@@ -442,7 +442,7 @@ int Dictionary_remove(Dictionary* dict, const char* k) {
 List* Dictionary_getKeys(Dictionary* dict) {
     Dictionary_Item* item;
     List* keys = List_new();
-    
+
     for(int i = 0; i < dict->bucket_count; i++) {
         item = dict->buckets[i];
         while(item) {

@@ -117,7 +117,7 @@ void Comm_init(void) {
         Logging_log(CRITICAL, __Util_format("Unable to connect to Comm server: %s", strerror(errno)));
         Seawolf_exitError();
     }
-    
+
     /* Prepare response set */
     response_set = calloc(response_set_size, sizeof(Comm_Message*));
     response_pending = calloc(response_set_size, sizeof(bool));
@@ -243,7 +243,7 @@ static int Comm_receiveThread(void) {
         /* Unpack message */
         message = Comm_unpackMessage(packed_message);
         Comm_PackedMessage_destroy(packed_message);
-        
+
         if(message->request_id != 0) {
             pthread_mutex_lock(&response_set_lock);
             response_set[message->request_id] = message;
@@ -269,7 +269,7 @@ static int Comm_receiveThread(void) {
     pthread_mutex_lock(&response_set_lock);
     pthread_cond_broadcast(&new_response);
     pthread_mutex_unlock(&response_set_lock);
-    
+
     return 0;
 }
 
@@ -332,7 +332,7 @@ Comm_Message* Comm_sendMessage(Comm_Message* message) {
 
         pthread_mutex_unlock(&response_set_lock);
     }
-    
+
     return response;
 }
 
@@ -411,7 +411,7 @@ Comm_PackedMessage* Comm_packMessage(Comm_Message* message) {
         memcpy(buffer, message->components[i], component_lengths[i]);
         buffer += component_lengths[i];
     }
-    
+
     free(component_lengths);
 
     return packed_message;
@@ -463,7 +463,7 @@ Comm_Message* Comm_unpackMessage(Comm_PackedMessage* packed_message) {
  */
 Comm_Message* Comm_Message_new(unsigned int component_count) {
     Comm_Message* message = malloc(sizeof(Comm_Message));
-    
+
     message->request_id = 0;
     message->count = component_count;
     message->components = NULL;
@@ -535,7 +535,7 @@ void Comm_PackedMessage_destroy(Comm_PackedMessage* packed_message) {
 
 /**
  * \brief Set the hub password
- * 
+ *
  * Set the password to use when authenticating with the hub
  *
  * \param password The password to authenticate with
@@ -595,7 +595,7 @@ void Comm_close(void) {
                 Comm_Message_destroyUnpacked(response);
             }
         }
-            
+
         shutdown(comm_socket, SHUT_RDWR);
         Task_wait(receive_thread);
 
@@ -608,7 +608,7 @@ void Comm_close(void) {
     if(comm_server) {
         free(comm_server);
     }
-    
+
     if(auth_password) {
         free(auth_password);
     }

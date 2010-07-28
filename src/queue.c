@@ -88,7 +88,7 @@ int Queue_getSize(Queue* queue) {
  *
  * Free the memory associated with the queue. Any memory allocated to items, in
  * the queue is not freed and should be done so separately
- * 
+ *
  * \param queue The queue to free
  */
 void Queue_destroy(Queue* queue) {

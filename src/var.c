@@ -51,12 +51,12 @@ float Var_get(char* name) {
     if(cached) {
         return (*cached);
     }
-    
+
     variable_request = Comm_Message_new(3);
     variable_request->components[0] = namespace;
     variable_request->components[1] = command;
     variable_request->components[2] = name;
-    
+
     Comm_assignRequestID(variable_request);
     response = Comm_sendMessage(variable_request);
 
@@ -89,7 +89,7 @@ float Var_get(char* name) {
 void Var_set(char* name, float value) {
     static char* namespace = "VAR";
     static char* command = "SET";
-    
+
     Comm_Message* variable_set = Comm_Message_new(4);
 
     variable_set->components[0] = namespace;
@@ -132,7 +132,7 @@ void Var_close(void) {
         for(int i = 0; i < n; i++) {
             free(Dictionary_get(ro_cache, List_get(keys, i)));
         }
-        
+
         List_destroy(keys);
         Dictionary_destroy(ro_cache);
         initialized = false;

@@ -28,7 +28,7 @@ void Hub_Logging_init(void) {
 
     /* Replicate messages to standard output */
     replicate_stdout = Config_truth(Hub_Config_getOption("log_replicate_stdout"));
-    
+
     path = strdup(Hub_Config_getOption("log_file"));
     Util_strip(path);
 

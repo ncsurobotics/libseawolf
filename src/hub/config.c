@@ -72,7 +72,7 @@ static void Hub_Config_processConfig(void) {
     List* options;
     char* option;
     char* value;
-    
+
     /* Initialize config table with default options */
     config = Dictionary_new();
     for(int i = 0; i < sizeof(valid_options) / sizeof(valid_options[0]); i++) {
@@ -140,7 +140,7 @@ const char* Hub_Config_getOption(const char* config_key) {
 void Hub_Config_close(void) {
     List* config_options;
     char* config_option;
-    
+
     if(config) {
         config_options = Dictionary_getKeys(config);
         while(List_getSize(config_options)) {

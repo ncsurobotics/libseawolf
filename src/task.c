@@ -19,13 +19,13 @@ struct WrapperArgs {
      * \private
      */
     int (*func)(void);
-    
+
     /**
      * Return value of func() stored here
      * \private
      */
     int return_value;
-    
+
     /**
      * Should Task_callWrapper free this structure
      * \private
@@ -137,7 +137,7 @@ int Task_watchdog(int (*func)(void), double timeout, int* retval) {
         (*retval) = func_args.return_value;
         timed_out = 0;
     }
-    
+
     /* Cancel and wait for watcher */
     pthread_cancel(watchdog_th);
     pthread_join(watchdog_th, NULL);
@@ -150,7 +150,7 @@ int Task_watchdog(int (*func)(void), double timeout, int* retval) {
  *
  * Run a new thread to run the given function in and return without waiting for
  * completion
- * 
+ *
  * \param func The function to spawn
  * \return A Task handle object
  */
@@ -198,7 +198,7 @@ pid_t Task_spawnApplication(char* path, char* args, ...) {
     if(pid == 0) {
         /* Replace current process with the given application */
         execv(path, argv);
-        
+
         /* Should *not* happen */
         fprintf(stderr, "Application %s failed to spawn!\n", path);
         exit(EXIT_FAILURE);

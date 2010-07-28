@@ -77,7 +77,7 @@ double PID_start(PID* pid, double pv) {
  *
  * Return the new value of the maniuplated variable (mv) based on the new value
  * of the given process variable (pv)
- * 
+ *
  * \param pid The controller object
  * \param pv The new process variable (pv)
  * \return The new manipulated variable after considering the new process variable
@@ -86,7 +86,7 @@ double PID_update(PID* pid, double pv) {
     double delta_t = Timer_getDelta(pid->timer);
     double e = pid->sp - pv;
     double mv;
-    
+
     /* Update running error */
     pid->e_dt += delta_t * e;
 
@@ -94,7 +94,7 @@ double PID_update(PID* pid, double pv) {
     mv  = pid->p * e;
     mv += pid->i * pid->e_dt;
     mv += pid->d * ((e - pid->e_last) / delta_t);
-    
+
     /* Store error */
     pid->e_last = e;
 

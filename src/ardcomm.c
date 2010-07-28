@@ -79,7 +79,7 @@ int ArdComm_getMessage(SerialPort sp, char* msgtype, char* buffer) {
         buffer_s++;
     }
     buffer[buffer_s] = '\0';
-    
+
     return 1;
 }
 
