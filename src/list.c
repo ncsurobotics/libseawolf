@@ -174,7 +174,7 @@ int List_indexOf(List* list, void* v) {
  * \param list The list to return the size of
  * \return The number of items in the list
  */
-inline int List_getSize(List* list) {
+int List_getSize(List* list) {
     return list->items;
 }
 
