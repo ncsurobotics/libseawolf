@@ -1,6 +1,12 @@
 
 /**
 
+\defgroup Core Core Routines
+\defgroup Communications Communications
+\defgroup DataStructures Data Structures
+\defgroup Hardware Hardware Access
+\defgroup Utilities Utilities
+
 \mainpage
 
 \section intro Introduction
