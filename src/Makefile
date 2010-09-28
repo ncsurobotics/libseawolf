@@ -20,6 +20,12 @@ all: $(LIB_NAME)
 $(LIB_NAME): $(OBJ) 
 	$(CC) $(LDFLAGS) $(OBJ) -o $(LIB_NAME)
 
+pylib: $(LIB_NAME)
+	cd python && $(PYTHON) setup.py build_ext build
+
+pylib-install: pylib
+	cd python && $(PYTHON) setup.py install
+
 .c.o:
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -27,6 +33,7 @@ $(OBJ): $(INCLUDES)
 
 clean:
 	-rm $(OBJ) $(LIB_NAME) 2> /dev/null
+	-rm -rf python/build/ python/seawolf.py python/seawolf.pyc python/seawolf_wrap.c 2> /dev/null
 
 install: $(LIB_NAME)
 	install -m 0755 -d $(PREFIX)/include $(PREFIX)/include/seawolf $(PREFIX)/bin $(PREFIX)/lib
@@ -41,4 +48,4 @@ uninstall:
 	-rm $(PREFIX)/include/seawolf.h
 	-rm -r $(PREFIX)/include/seawolf
 
-.PHONY: all clean install uninstall
+.PHONY: all clean install uninstall pylib pylib-install

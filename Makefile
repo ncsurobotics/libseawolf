@@ -13,6 +13,12 @@ $(LIB_NAME):
 $(HUB_NAME):
 	cd src/hub/ && $(MAKE) $@
 
+pylib:
+	cd src/ && $(MAKE) $@
+
+pylib-install:
+	cd src && $(MAKE) $@
+
 clean:
 	cd src && $(MAKE) $@
 	cd src/hub/ && $(MAKE) $@
@@ -31,4 +37,4 @@ doc:
 doc-hub:
 	doxygen doc/hub/Doxyfile
 
-.PHONY: all clean install uninstall doc
+.PHONY: all clean install uninstall doc pylib pylib-install
