@@ -9,3 +9,4 @@ syntax: glob
 syntax: regexp
 ^seawolf-hub$
 ^doc/html/
+^doc/hub/html/
