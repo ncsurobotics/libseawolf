@@ -2,7 +2,7 @@
 #ifndef __SEAWOLF_HUB_INCLUDE_H
 #define __SEAWOLF_HUB_INCLUDE_H
 
-#include <sys/select.h>
+#include <stdbool.h>
 
 #define MAX_CLIENTS (FD_SETSIZE - 1)
 #define MAX_ERRORS 4
@@ -14,70 +14,98 @@
 
 /**
  * Client state
- * \private
  */
 typedef enum {
-    /** State is unknown or unset */
+    /**
+     * State is unknown or unset
+     */
     UNKNOWN,
 
-    /** Client is connected, but unauthenticated */
+    /**
+     * Client is connected, but unauthenticated
+     */
     UNAUTHENTICATED,
 
-    /** Client is authenticated (full connected) */
+    /**
+     * Client is authenticated (full connected)
+     */
     CONNECTED,
 
-    /** Client has requested an orderly shutdown */
+    /**
+     * Client has requested an orderly shutdown
+     */
     PARTING,
 
-    /** Client is being kicked from the server */
+    /**
+     * Client is being kicked from the server
+     */
     KICKING,
 
-    /** Client appears to have already disconnected */
+    /**
+     * Client appears to have already disconnected
+     */
     DEAD,
 
-    /** Client connection is closed */
+    /**
+     * Client connection is closed
+     */
     CLOSED
 } Hub_Client_State;
 
 /**
  * Represents a connected client
- * \private
  */
 typedef struct {
     /**
      * Client socket
-     * \private
      */
     int sock;
 
     /**
      * Current state of the client
-     * \private
      */
     Hub_Client_State state;
 
     /**
      * Client name
-     * \private
      */
     char* name;
 
     /**
      * Set to designate why the client is being kicked from the server
-     * \private
      */
     char* kick_reason;
 } Hub_Client;
 
-struct Hub_Var_s {
+/**
+ * Internal representation of a variable
+ */
+typedef struct {
+    /**
+     * Variable name
+     */
     char* name;
-    double value;
-    double default_value;
-    bool persistent;
-    bool readonly;
-};
 
-typedef struct Hub_Var_s Hub_Var;
+    /**
+     * Current variable value
+     */
+    double value;
+
+    /**
+     * Default value of the variable as given by the definitions file
+     */
+    double default_value;
+
+    /**
+     * Persistent variable flag
+     */
+    bool persistent;
+
+    /**
+     * Readonly variable flag
+     */
+    bool readonly;
+} Hub_Var;
 
 void Hub_exit(void);
 void Hub_exitError(void);

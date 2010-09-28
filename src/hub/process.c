@@ -1,7 +1,34 @@
+/**
+ * \file
+ * \brief Request processing
+ */
 
 #include "seawolf.h"
 #include "seawolf_hub.h"
 
+static int Hub_Process_comm(Comm_Message* message, Comm_Message** response, Hub_Client* client);
+static int Hub_Process_notify(Comm_Message* message, Comm_Message** response);
+static int Hub_Process_log(Comm_Message* message, Comm_Message** response);
+static int Hub_Process_var(Comm_Message* message, Comm_Message** response, Hub_Client* client);
+
+/**
+ * \defgroup Process Process
+ * \brief Message processing
+ * \{
+ */
+
+/**
+ * \brief Process a message with the COMM prefix
+ *
+ * Process a message related to core Comm functions. Connection establishment,
+ * shutdown, authentication, etc.
+ *
+ * \param message The received message
+ * \param response Pointer to a response pointer which will be allocated
+ * \param client The client which sent the receive message
+ * \return Return value specifies the scope of the response (RESPOND_TO_SENDER,
+ * RESPOND_TO_ALL, etc.)
+ */
 static int Hub_Process_comm(Comm_Message* message, Comm_Message** response, Hub_Client* client) {
     char* supplied_password = NULL;
     const char* actual_password;
@@ -41,6 +68,16 @@ static int Hub_Process_comm(Comm_Message* message, Comm_Message** response, Hub_
     return RESPOND_TO_NONE;
 }
 
+/**
+ * \brief Process an incoming notification
+ *
+ * Process a received notification message by rebroadcasting the notification
+ * to all connected clients
+ *
+ * \param message The received message
+ * \param response The response it stored here
+ * \return Response action
+ */
 static int Hub_Process_notify(Comm_Message* message, Comm_Message** response) {
     if(message->count != 3 || strcmp(message->components[1], "OUT") != 0) {
         return RESPOND_TO_NONE;
@@ -54,6 +91,15 @@ static int Hub_Process_notify(Comm_Message* message, Comm_Message** response) {
     return RESPOND_TO_ALL;
 }
 
+/**
+ * \brief Process a log message
+ *
+ * Process a log message requesting a message be centrally logged
+ *
+ * \param message The recieved messsage
+ * \param response Pointer to a location to allocate and store a response
+ * \return Response action
+ */
 static int Hub_Process_log(Comm_Message* message, Comm_Message** response) {
     if(message->count != 4) {
         return RESPOND_TO_NONE;
@@ -63,6 +109,16 @@ static int Hub_Process_log(Comm_Message* message, Comm_Message** response) {
     return RESPOND_TO_NONE;
 }
 
+/**
+ * \brief Process a variable message
+ *
+ * Process a message setting or getting a variable
+ *
+ * \param message The received message
+ * \param response Pointer to a location to allocate and store a respones
+ * \param client Pointer the the client initiating the request
+ * \return Response action
+ */
 static int Hub_Process_var(Comm_Message* message, Comm_Message** response, Hub_Client* client) {
     Hub_Var* var;
     int n;
@@ -109,6 +165,16 @@ static int Hub_Process_var(Comm_Message* message, Comm_Message** response, Hub_C
     return RESPOND_TO_NONE;
 }
 
+/**
+ * \brief Process a request
+ *
+ * Process an incoming message from a client
+ *
+ * \param message Received message
+ * \param response Pointer to a location to allocate and store a possible response
+ * \param client Client which the message was received from
+ * \return Response action
+ */
 int Hub_Process_process(Comm_Message* message, Comm_Message** response, Hub_Client* client) {
     int respond_to = RESPOND_TO_NONE;
     *response = NULL;
@@ -127,3 +193,5 @@ int Hub_Process_process(Comm_Message* message, Comm_Message** response, Hub_Clie
 
     return respond_to;
 }
+
+/** \} */

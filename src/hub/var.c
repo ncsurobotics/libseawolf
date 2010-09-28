@@ -1,15 +1,53 @@
+/**
+ * \file
+ * \brief Variable get/set backend
+ */
 
 #include "seawolf.h"
 #include "seawolf_hub.h"
 
+/** Variable storage */
 static Dictionary* var_cache = NULL;
+
+/** List of variables which are marked as persistent */
 static List* persistent_variables = NULL;
 
+/**
+ * Task handle for the thread which flushes the persistent variable database
+ */
 static Task_Handle db_flush_handle;
+
+/** Lock associated with flush signal */
 static pthread_cond_t do_flush = PTHREAD_COND_INITIALIZER;
+
+/**
+ * Hub_Var_dbFlusher waits on this condition. It is signaled by
+ * Hub_Var_flushPersistent
+ */
 static pthread_mutex_t flush_lock = PTHREAD_MUTEX_INITIALIZER;
+
+/**
+ * Flag associated with the above condition. Both are needed to ensure proper
+ * flush request signaling
+ */
 static int do_flush_flag = 0;
 
+/**
+ * \defgroup var Variable DB
+ * \brief Routines for accessing the variable database
+ * \{
+ */
+
+/**
+ * \brief Persistent variable database flushing thread
+ *
+ * This thread runs in the background of the hub and waits for a signal from
+ * Hub_Var_flushPersistent to flush the persistent variables databaes. It does
+ * this by writing the database to a temporary file and then moving the
+ * temporary file over the real database.
+ *
+ * \return Does not return. This task is killed in Hub_Var_close
+ */
 static int Hub_Var_dbFlusher(void) {
     FILE* tmp_db_file = NULL;
     const char* db = Hub_Config_getOption("var_db");
@@ -44,11 +82,24 @@ static int Hub_Var_dbFlusher(void) {
     return 0;
 }
 
+/**
+ * \brief Flush persistent variables to disk
+ *
+ * Signal to the Hub_Var_dbFlusher task that it should perform a flush of the
+ * persistent variables database
+ */
 static void Hub_Var_flushPersistent(void) {
     do_flush_flag = 1;
     pthread_cond_signal(&do_flush);
 }
 
+/**
+ * \brief Read the persistent variables database
+ *
+ * With var_cache already populated by the variable definitons, this will set
+ * the values of persistent variables based on those values stored on disk in
+ * the variables database
+ */
 static void Hub_Var_readPersistentValues(void) {
     const char* var_db = Hub_Config_getOption("var_db");
     Dictionary* db;
@@ -115,7 +166,7 @@ static void Hub_Var_readPersistentValues(void) {
 
         var = Dictionary_get(var_cache, var_name);
         if(var == NULL) {
-            Hub_Logging_log(ERROR, Util_format("Variable '%s' found in database but no present in variable definitions!", var_name));
+            Hub_Logging_log(ERROR, Util_format("Variable '%s' found in database but not present in variable definitions!", var_name));
             Hub_exitError();
         }
 
@@ -131,6 +182,13 @@ static void Hub_Var_readPersistentValues(void) {
     Dictionary_destroy(db);
 }
 
+/**
+ * \brief Read the variable definitions file
+ *
+ * Populate the variable cache (var_cache) by reading variable definitions from
+ * the variable definitions file specified in the configuration file (var_defs
+ * option)
+ */
 static void Hub_Var_readDefinitions(void) {
     const char* var_defs = Hub_Config_getOption("var_defs");
     Dictionary* defs;
@@ -220,6 +278,12 @@ static void Hub_Var_readDefinitions(void) {
     Dictionary_destroy(defs);
 }
 
+/**
+ * \brief Initalize the variables subsystem
+ *
+ * Read variable definitions, load persistent variable values from the variable
+ * database and start a background thread to flush the database
+ */
 void Hub_Var_init(void) {
     Hub_Var_readDefinitions();
 
@@ -229,11 +293,31 @@ void Hub_Var_init(void) {
     }
 }
 
+/**
+ * \brief Return a variable structure
+ *
+ * Return the variable structure for the given variable name    
+ *
+ * \param name The variable to retreive
+ * \return A pointer to the structure representing the variable internally or
+ * NULL if the variable could not be found
+ */
 Hub_Var* Hub_Var_get(const char* name) {
     Hub_Var* var = Dictionary_get(var_cache, name);
     return var;
 }
 
+/**
+ * \brief Set a variable value
+ *
+ * Set the value of the specified variable to the given value. If the variable
+ * is persistent then the variable database will be flushed.
+ *
+ * \param name The variable to set
+ * \param value New value for the variable
+ * \return Return 0 on success. If the variable does not exist -1 will be
+ * returned. If the variable is readonly then -2 will be returned.
+ */
 int Hub_Var_setValue(const char* name, double value) {
     Hub_Var* var = Dictionary_get(var_cache, name);
     if(var == NULL) {
@@ -252,6 +336,11 @@ int Hub_Var_setValue(const char* name, double value) {
     return 0;
 }
 
+/**
+ * \brief Close the variable subsystem
+ *
+ * Free memory and close background threads associated with this subsystem
+ */
 void Hub_Var_close(void) {
     List* var_names;
     char* var_name;
@@ -277,3 +366,5 @@ void Hub_Var_close(void) {
         Dictionary_destroy(var_cache);
     }
 }
+
+/** \} */

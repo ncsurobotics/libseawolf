@@ -1,17 +1,30 @@
+/**
+ * \file
+ * \brief Network IO
+ */
 
-/* Local includes */
 #include "seawolf.h"
 #include "seawolf_hub.h"
 
-/* Networking includes */
 #include <arpa/inet.h>
-#include <netdb.h>
-#include <netinet/in.h>
 #include <poll.h>
-#include <sys/select.h>
 #include <sys/socket.h>
-#include <sys/time.h>
 
+/**
+ * \defgroup netio Network IO
+ * \brief Message IO routines
+ * \{
+ */
+
+/**
+ * \brief Receive a message from the given client
+ *
+ * Receive a message which has arrived from the given client. In the event of
+ * an error NULL will be returned and the client state may be changed to DEAD.
+ *
+ * \param client The client to read the message from
+ * \return The unpacked message or NULL if an error occured
+ */
 Comm_Message* Hub_Net_receiveMessage(Hub_Client* client) {
     Comm_PackedMessage* packed_message;
     Comm_Message* message;
@@ -64,6 +77,15 @@ Comm_Message* Hub_Net_receiveMessage(Hub_Client* client) {
 
 }
 
+/**
+ * \brief Send a packed message
+ *
+ * Send a message which has already been packed
+ *
+ * \param client Client to send the message to
+ * \param packed_message The packed message to send
+ * \return The number of bytes sent or -1 in the even of an error
+ */
 int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* packed_message) {
     struct pollfd fd = {.fd = client->sock, .events = POLLOUT};
     int n = -1;
@@ -82,6 +104,16 @@ int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* packed_mes
     return n;
 }
 
+/**
+ * \brief Send a message
+ *
+ * Pack the given message and then send the packed message using
+ * Hub_Net_sendPackedMessage
+ *
+ * \param client Client to send the message to
+ * \param message The message to pack and send
+ * \return The number of bytes sent or -1 in the even of an error
+ */
 int Hub_Net_sendMessage(Hub_Client* client, Comm_Message* message) {
     Comm_PackedMessage* packed_message = Comm_packMessage(message);
     int n = -1;
@@ -95,9 +127,19 @@ int Hub_Net_sendMessage(Hub_Client* client, Comm_Message* message) {
     return n;
 }
 
+/**
+ * \brief Destroy a message
+ *
+ * Destroy a message by freeing each individual component and then freeing the
+ * message structure itself
+ *
+ * \param response The message to destoy
+ */
 void Hub_Net_responseDestroy(Comm_Message* response) {
     for(int i = 0; i < response->count; i++) {
         free(response->components[i]);
     }
     Comm_Message_destroy(response);
 }
+
+/** \} */

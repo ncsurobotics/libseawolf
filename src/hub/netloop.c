@@ -1,9 +1,11 @@
+/**
+ * \file
+ * \brief Request processing loop
+ */
 
-/* Local includes */
 #include "seawolf.h"
 #include "seawolf_hub.h"
 
-/* Networking includes */
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -14,25 +16,42 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
+static void Hub_Net_removeClient(Hub_Client* client);
+static void Hub_Net_broadcast(Comm_Message* message);
+static void Hub_Net_initServerSocket(void);
+
 /* List of active clients */
 static List* clients = NULL;
 
-/* Server socket */
+/** Server socket */
 static int svr_sock = 0;
 
-/* Server socket bind address */
+/** Server socket bind address */
 struct sockaddr_in svr_addr;
 
-/* Flag to keep Hub_mainLoop running */
+/** Flag to keep Hub_mainLoop running */
 static bool run_mainloop = true;
 
-/* Flag used by Hub_mainLoop to signal its completion */
+/** Flag used by Hub_mainLoop to signal its completion */
 static bool mainloop_running = true;
 
-/* Condition to wait for when waiting for Hub_mainLoop to complete */
+/** Condition to wait for when waiting for Hub_mainLoop to complete */
 static pthread_cond_t mainloop_done = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t mainloop_done_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/**
+ * \defgroup netloop Net loop
+ * \brief Main hub request loop and support routines
+ * \{
+ */
+
+/**
+ * \brief Remove a client
+ *
+ * Remove a client from the client list and close the associated socket
+ *
+ * \param client The client to remove
+ */
 static void Hub_Net_removeClient(Hub_Client* client) {
     int index = List_indexOf(clients, client);
 
@@ -46,6 +65,13 @@ static void Hub_Net_removeClient(Hub_Client* client) {
     free(client);
 }
 
+/**
+ * \brief Broadcast a message to all clients
+ *
+ * Send the given message to all connected clients
+ *
+ * \param message The message to broadcast
+ */
 static void Hub_Net_broadcast(Comm_Message* message) {
     Comm_PackedMessage* packed_message = Comm_packMessage(message);
     Hub_Client* client;
@@ -64,6 +90,12 @@ static void Hub_Net_broadcast(Comm_Message* message) {
     Comm_PackedMessage_destroy(packed_message);
 }
 
+/**
+ * \brief Initialize the sever socket
+ *
+ * Perform all required initialization of the server socket so that it is
+ * prepared to being accepting connections
+ */
 static void Hub_Net_initServerSocket(void) {
     /* Used to set the SO_REUSEADDR socket option on the server socket */
     const int reuse = 1;
@@ -98,6 +130,12 @@ static void Hub_Net_initServerSocket(void) {
     }
 }
 
+/**
+ * \brief Close the net subsystem
+ *
+ * Perform a controlled shutdown of the net subsystem. Free all associated
+ * memory and properly shutdown all associated sockets
+ */
 void Hub_Net_close(void) {
     int tmp_sock;
 
@@ -127,6 +165,11 @@ void Hub_Net_close(void) {
     pthread_mutex_unlock(&mainloop_done_lock);
 }
 
+/**
+ * \brief Hub main loop
+ *
+ * Main loop which processes client requests and handles all client connections
+ */
 void Hub_Net_mainLoop(void) {
 
     /* Used to set the SO_RCVTIMEO (receive timeout) socket option on client
@@ -338,3 +381,5 @@ void Hub_Net_mainLoop(void) {
     pthread_cond_broadcast(&mainloop_done);
     pthread_mutex_unlock(&mainloop_done_lock);
 }
+
+/** \} */

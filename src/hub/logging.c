@@ -1,21 +1,46 @@
+/**
+ * \file
+ * \brief Logging functions
+ */
 
 #include "seawolf.h"
 #include "seawolf_hub.h"
 
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <time.h>
 
 #define TIME_BUFFER_SIZE 64
 
+/** Marks this subsystem as initialized */
 static bool initialized = false;
+
+/** Path to the log file */
 static FILE* log_file = NULL;
+
+/** File descriptor for the above log file */
 static int log_file_fd = STDOUT_FILENO;
+
+/** Buffer to store the formatted time in */
 static char time_buffer[TIME_BUFFER_SIZE];
+
+/** Current minimum log level */
 static short min_log_level = DEBUG;
+
+/** Whether to replicate log messages to standard output */
 static bool replicate_stdout = false;
 
+/**
+ * \defgroup Log Logging
+ * \brief Logging routines for the hub and for the centralized logging
+ * \{
+ */
+
+/**
+ * \brief Initialize the logging subsystem
+ *
+ * Open log files and load options to ready the logging subsystem
+ */
 void Hub_Logging_init(void) {
     char* path;
     short tmp;
@@ -51,12 +76,31 @@ void Hub_Logging_init(void) {
     initialized = true;
 }
 
+/**
+ * \brief Log a message from the hub
+ *
+ * Used by the hub to log its own log messages
+ *
+ * \param log_level Log level to associate message with
+ * \param msg The message to log
+ */
 void Hub_Logging_log(short log_level, char* msg) {
     if(log_level >= min_log_level) {
         Hub_Logging_logWithName("Hub", log_level, msg);
     }
 }
 
+/**
+ * \brief Log a message with the given application name
+ *
+ * Log a message with an application name. Used to log messages received from
+ * applications
+ *
+ * \param app_name The name of the application to associated with the log
+ *   message
+ * \param log_level Log level to assocaite message with
+ * \param msg The message to log
+ */
 void Hub_Logging_logWithName(char* app_name, short log_level, char* msg) {
     time_t t;
 
@@ -73,6 +117,11 @@ void Hub_Logging_logWithName(char* app_name, short log_level, char* msg) {
     }
 }
 
+/**
+ * \brief Close the logging subsystem
+ *
+ * Close and flush log files
+ */
 void Hub_Logging_close(void) {
     if(log_file) {
         fflush(log_file);
@@ -80,3 +129,5 @@ void Hub_Logging_close(void) {
         close(log_file_fd);
     }
 }
+
+/** \} */

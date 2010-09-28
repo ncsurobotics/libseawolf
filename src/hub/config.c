@@ -1,21 +1,36 @@
+/**
+ * \file
+ * \brief Configuration loading
+ */
 
 #include "seawolf.h"
 #include "seawolf_hub.h"
 
-#include <ctype.h>
-
+/**
+ * Represents a configuration option
+ */
 typedef struct {
+    /** 
+     * The option name
+     */
     char* option;
+    
+    /**
+     * Default value of the option
+     */
     char* default_value;
 } Hub_Config_Option;
 
 static bool Hub_Config_chooseConfigFile(void);
 static void Hub_Config_processConfig(void);
 
+/** Lookup table for configuration options */
 static Dictionary* config = NULL;
+
+/** Path to configuration file */
 static char* hub_config_file = NULL;
 
-/* Available options and their defaults */
+/** Available options and their defaults */
 static Hub_Config_Option valid_options[] = {{"bind_address"        , "127.0.0.1"       },
                                             {"bind_port"           , "31427"           },
                                             {"password"            , ""                },
@@ -25,10 +40,28 @@ static Hub_Config_Option valid_options[] = {{"bind_address"        , "127.0.0.1"
                                             {"log_replicate_stdout", "1"               },
                                             {"log_level"           , "NORMAL"          }};
 
+/**
+ * \defgroup Config Configuration
+ * \brief Routines for reading the hub configuration file
+ * \{
+ */
+
+/**
+ * \brief Initialize the config subsystem
+ *
+ * Initialize the config subsystem by processing the configuration file
+ */
 void Hub_Config_init(void) {
     Hub_Config_processConfig();
 }
 
+/**
+ * \brief Specify the location of a configuration file
+ *
+ * Specify the location of a configuration file to use
+ *
+ * \param filename The path of the configuration file to use
+ */
 void Hub_Config_loadConfig(const char* filename) {
     if(hub_config_file) {
         free(hub_config_file);
@@ -37,10 +70,16 @@ void Hub_Config_loadConfig(const char* filename) {
     hub_config_file = strdup(filename);
 }
 
-/* Choose which configuration file we will use. If a configuration file has been
-   specified by Hub_Config_loadConfig then we will always use that
-   one. Otherwise, we will check fo the existance of ~/.swhubc and
-   /etc/seawolf_hub.conf in that order. If neither of those exist we give up */
+/**
+ * \brief Choose a configuration file to use
+ *
+ * Choose which configuration file we will use. If a configuration file has been
+ * specified by Hub_Config_loadConfig then use that one. Otherwise, check the
+ * existance of ~/.swhubc and /etc/seawolf_hub.conf in that order. If neither of
+ * those exist give up and return false.
+ *
+ * \return Returns true if a file was able to be chosen, false otherwise
+ */
 static bool Hub_Config_chooseConfigFile(void) {
     char* temp_path = NULL;
 
@@ -67,6 +106,11 @@ static bool Hub_Config_chooseConfigFile(void) {
     return true;
 }
 
+/**
+ * \brief Process the configuration file
+ *
+ * Read the configuration file and populate the configuration dictionary
+ */
 static void Hub_Config_processConfig(void) {
     Dictionary* temp_config;
     List* options;
@@ -132,11 +176,24 @@ static void Hub_Config_processConfig(void) {
     Dictionary_destroy(temp_config);
 }
 
+/**
+ * \brief Get the value of a configuration option
+ *
+ * Get the value of the configuration option or NULL if the configuration option is invali
+ *
+ * \param config_key The option to get the value for
+ * \return A pointer to the value
+ */
 const char* Hub_Config_getOption(const char* config_key) {
     char* value = Dictionary_get(config, config_key);
     return value;
 }
 
+/**
+ * \brief Close the configuration subsystem in the hub
+ * 
+ * Free memory and structures associated with a loaded configuration file
+ */
 void Hub_Config_close(void) {
     List* config_options;
     char* config_option;
@@ -156,3 +213,5 @@ void Hub_Config_close(void) {
         free(hub_config_file);
     }
 }
+
+/** \} */
