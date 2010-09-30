@@ -38,9 +38,6 @@ class Serial:
     def setBaud(self, *args):
         return _sw.Serial_setBaud(self.sp, *args)
 
-    def isReady(self, *args):
-        return _sw.Serial_isReady(self.sp, *args)
-
     def flush(self, *args):
         return _sw.Serial_flush(self.sp, *args)
 
