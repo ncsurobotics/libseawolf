@@ -271,7 +271,7 @@ void Serial_setNonBlocking(SerialPort sp) {
 /**
  * \brief Check if a serial port is "ready"
  * \deprecated This function is completely useless and ineffective. It should
- * not be used; determining if a serial port is "ready" is high application
+ * not be used; determining if a serial port is "ready" is highly application
  * particular
  *
  * Determine if a serial port is "ready" by probing it and attempting to receive
@@ -336,6 +336,9 @@ int Serial_getByte(SerialPort sp) {
  * \param sp Handler for the device to read from
  * \param[out] buffer The buffer to write the line into
  * \return -1 if an error occurs, 0 otherwise
+ *
+ * \todo This needs to be made safe. The buffer should be allocated by this
+ * function or the size of the buffer should have to be passed.
  */
 int Serial_getLine(SerialPort sp, char* buffer) {
     int n = 0;
