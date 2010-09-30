@@ -33,7 +33,7 @@ struct sockaddr_in svr_addr;
 static bool run_mainloop = true;
 
 /** Flag used by Hub_mainLoop to signal its completion */
-static bool mainloop_running = true;
+static bool mainloop_running = false;
 
 /** Condition to wait for when waiting for Hub_mainLoop to complete */
 static pthread_cond_t mainloop_done = PTHREAD_COND_INITIALIZER;
@@ -139,6 +139,17 @@ static void Hub_Net_initServerSocket(void) {
 void Hub_Net_close(void) {
     int tmp_sock;
 
+    /* If the main loop is not yet running then we don't have much cleanup to
+       do. If there is a server socket attempt to close it and then simply
+       return */
+    if(!mainloop_running) {
+        if(svr_sock > 0) {
+            close(svr_sock);
+        }
+
+        return;
+    }
+
     /* Block until Hub_mainLoop exists */
     pthread_mutex_lock(&mainloop_done_lock);
 
@@ -227,6 +238,9 @@ void Hub_Net_mainLoop(void) {
 
     /* Begin accepting connections */
     Hub_Logging_log(INFO, "Accepting client connections");
+
+    /* Main loop is now running */
+    mainloop_running = true;
 
     /* Start sending/recieving messages */
     while(run_mainloop) {
