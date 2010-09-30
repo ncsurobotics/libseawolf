@@ -60,7 +60,7 @@ void Notify_setPolicy(bool policy) {
 
 /**
  * \brief Input a new message
- * \internal
+ * \private
  *
  * Provide a new message for the incoming notification queue
  *
@@ -109,6 +109,51 @@ void Notify_get(char* action, char* param) {
     }
 
     free(msg);
+}
+
+/**
+ * \brief Get next message
+ *
+ * Same as Notify_get() but allocates memory to store the action and parameter
+ * internally. The calling function should pass the returned data to
+ * Notify_freeNotification() to release the allcoated memory.
+ *
+ * \return Two strings. [0] is the action, [1] is the parameter
+ */
+char** Notify_getWithAlloc(void) {
+    char** notification = malloc(2 * sizeof(char*));
+    char* tmp;
+    char* msg;
+
+    /* Read message */
+    do {
+        msg = Queue_pop(notification_queue, true);
+    } while(!Notify_check_filter(msg));
+
+    /* Split message */
+    tmp = msg;
+    while(*tmp != ' ') {
+        tmp++;
+    }
+    *tmp = '\0';
+
+    notification[0] = msg;
+    notification[1] = tmp + 1;
+
+    return notification;
+}
+
+/**
+ * \brief Free a notification
+ *
+ * Free a notification allocated and returned by Notify_getWithAlloc()
+ *
+ * \param notification The notification to free. Should be as was returned by
+ *   Notify_getWithAlloc().
+ */
+void Notify_freeNotification(char** notification) {
+    free(notification[0]);
+    free(notification);
 }
 
 /**

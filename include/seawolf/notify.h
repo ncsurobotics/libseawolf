@@ -49,6 +49,8 @@ void Notify_inputMessage(Comm_Message* message);
 
 /* Public access methods */
 void Notify_get(char* action, char* param);
+char** Notify_getWithAlloc(void);
+void Notify_freeNotification(char** notification);
 void Notify_send(char* action, char* param);
 
 /* Filter messages, NULL filter to clear filters */
