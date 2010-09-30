@@ -20,7 +20,7 @@ HUB_NAME = seawolf-hub
 EXTRA_LDFLAGS = 
 
 # Python executable to use when building Python bindings
-PYTHON = python
+PYTHON ?= python
 
 # Library version
 MAJOR = 0
