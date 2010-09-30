@@ -25,7 +25,6 @@ int Serial_closePort(SerialPort sp);
 void Serial_setBlocking(SerialPort sp);
 void Serial_setNonBlocking(SerialPort sp);
 void Serial_setBaud(SerialPort sp, int baud);
-bool Serial_isReady(SerialPort sp);
 void Serial_flush(SerialPort sp);
 
 /* IO commands */

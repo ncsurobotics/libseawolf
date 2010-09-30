@@ -269,47 +269,6 @@ void Serial_setNonBlocking(SerialPort sp) {
 }
 
 /**
- * \brief Check if a serial port is "ready"
- * \deprecated This function is completely useless and ineffective. It should
- * not be used; determining if a serial port is "ready" is highly application
- * particular
- *
- * Determine if a serial port is "ready" by probing it and attempting to receive
- * data.
- *
- * \param sp Handler for a serial port to test
- * \return true if the port is ready, false otherwise
- */
-bool Serial_isReady(SerialPort sp) {
-    int a, n;
-
-#ifdef SEAWOLF_DEBUG
-    Logging_log(DEBUG, "Probing ready state");
-#endif
-
-    /* Set non-blocking */
-    fcntl(sp, F_SETFL, O_NONBLOCK);
-
-    /* Check for available data */
-    Util_usleep(0.25);
-    n = read(sp, &a, 1);
-
-    /* Unset non-blocking */
-    fcntl(sp, F_SETFL, 0);
-
-#ifdef SEAWOLF_DEBUG
-    if(n == 0) {
-        Logging_log(DEBUG, "Probe failed...");
-    } else {
-        Logging_log(DEBUG, __Util_format("Probe returned %d bytes", n));
-    }
-#endif
-
-    /* We are ready if we read 1 byte rather than 0 */
-    return (n == 1);
-}
-
-/**
  * \brief Get a byte
  *
  * Read a single byte from the serial device
