@@ -13,5 +13,6 @@ setup(name='Seawolf',
                              libraries=['seawolf'],
                              include_dirs=['../../include/'],
                              library_dirs=['../'])],
-      py_modules=['seawolf.seawolf', 'seawolf.__init__'],
+      py_modules=['seawolf.seawolf', 'seawolf.__init__', 'seawolf.var',
+                  'seawolf.notify', 'seawolf.logging'],
       )
