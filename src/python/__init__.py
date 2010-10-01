@@ -7,6 +7,21 @@ import var
 import logging
 import notify
 
+# Constants
+CRITICAL = _sw.CRITICAL
+ERROR = _sw.ERROR
+WARNING = _sw.WARNING
+NORMAL = _sw.NORMAL
+INFO = _sw.INFO
+DEBUG = _sw.DEBUG
+
+FILTER_ACTION = _sw.FILTER_ACTION
+FILTER_MATCH = _sw.FILTER_MATCH
+FILTER_PREFIX = _sw.FILTER_PREFIX
+
+SEAWOLF_DEFAULT_CONFIG = _sw.SEAWOLF_DEFAULT_CONFIG
+SEAWOLF_MAX_NAME_LEN = _sw.SEAWOLF_MAX_NAME_LEN
+
 init = _sw.Seawolf_init
 close = _sw.Seawolf_close
 exitError = _sw.Seawolf_exitError
@@ -74,8 +89,8 @@ class Serial:
         return _sw.Serial_available(self.sp, *args)
 
 class PID:
-    def __init__(self):
-        self.pid = _sw.PID_new()
+    def __init__(self, *args):
+        self.pid = _sw.PID_new(*args)
 
     def start(self, *args):
         return _sw.PID_start(self.pid, *args);
