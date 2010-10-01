@@ -1,0 +1,125 @@
+/**
+
+\page pythonbindings Python Bindings
+
+\section intro Introduction
+
+The code and support to build and install Python support for libseawolf is now
+bundled with the standard libseawolf distribution. This module allows access to
+most of libseawolfs underlying functionality from within Python
+applications. Python applications using libseawolf can seamlessly communication
+and interact with other libseawolf based applications whether they be other
+Python applications, or standard libseawolf applications coded in C. The Python
+API exposes the following components of libseawolf,
+
+ - \ref Main "Seawolf" - Library initialization and control routines.
+ - \ref Logging "Logging" - Facilities for logging, both local and centralized
+   through the hub server
+ - \ref Notify "Notify" - Sending and receiving notifications. Notifications
+   are broadcast messages sent between applications
+ - \ref Var "Var" - Support for setting and retrieving shared variables
+ - \ref Serial "Serial" - Routines for opening serial devices and sending and
+   receive data
+ - \ref PID "PID" - Generic implementation of a
+   Proportional-Integral-Derivative (PID) controller
+ - \ref Timer "Timer" - Timers for easily keeping track of changes in time
+
+Most components of libseawolf not exposed through the module were left out
+because the standard Python runtime renders them redudant. Replacements are,
+
+ - \ref Dictionary, \ref List, and \ref Stack are equivalent to Python's builtin
+   dictionary and list type
+ - The thread safe queue implementation provided by \ref Queue is replaced by
+   Python's included queue module
+ - The \ref Util component is replaced by standard Python functions (<a
+   href="http://docs.python.org/library/time.html#time.sleep">time.sleep</a>
+   replaces Util_usleep())
+
+The following components are currently unavaible because they are more difficult
+to expose. They me be made available in a future version.
+
+ - \ref Config "Configuration" - Loading configuration options
+ - \ref Task "Task" - Support for task scheduling and running backgroud tasks
+ - \ref Ard "ArdComm" - Identifying and handshaking with microcontrollers
+   following the ArdComm protocol
+
+\section example Example
+
+The following example should be easy to follow to those familiar with the libseawolf C API.
+
+\code
+import seawolf as sw
+
+sw.loadConfig("seawolf.conf")
+sw.init("My application")
+
+t = sw.Timer()
+
+sw.notify.filter(sw.FILTER_PREFIX, "PING");
+while True:
+    (action, data) = sw.notify.get()
+    if action == "PING":
+        sw.notify.send("PING", "NULL")
+        print "Time: %.2f" % (t.getDelta())
+
+sw.close()
+
+\endcode
+
+\section naming API Mapping
+
+The Python module aims to as directly represent the underlying C library as well
+as possible, while at the same time making the library more comfortable to use
+from within Python. The source code for the module is the best way to answer any
+questions about how the Python calls map to the underlying C calls, but the
+following should be enough for most purposes.
+
+The \ref Logging "Logging", \ref Notify "Notify", and \ref Var "Var" components
+are exposed as namespaces within the seawolf module. For example, Logging_log()
+becomes \c seawolf.logging.log() and Notify_send() becomes \c
+seawolf.notify.send(). Functions in the \ref Main "Seawolf" component are
+exposed directly within the seawolf module (e.g. Seawolf_loadConfig() becomes \c
+seawolf.loadConfig(), Seawolf_init() becomes \c seawolf.init(), etc.)
+
+The \ref Serial "Serial", \ref Timer "Timer", and \ref PID "PID" modules are
+exposed as the classes \c seawolf.Serial, \c seawolf.Timer, and \c seawolf.PID
+respectively. Creating a new Timer or PID object is equivalent to calling
+Timer_new() or PID_new(). Once the object is allocated, it can be treated like
+an object with all the same functions calls as are availble for them in
+libseawolf. For example,
+
+\code
+import seawolf as sw
+
+t = seawolf.Timer()
+
+print t.getTotal()
+print t.getDelta()
+
+\endcode
+
+\code
+
+import seawolf as sw
+
+c = seawolf.PID(0, 1, 1, 0)
+c.start(0)
+
+print c.update(5)
+
+\endcode
+
+To create a new \c seawolf.Serial object, call \c seawolf.Serial.open() as you
+would call Serial_open(). This will return an object that can be used in the
+same manner as a \c seawolf.Timer or \c seawolf.PID object.
+
+As a final note, all constants within libseawolf are exposed at the top level of
+the module. That is, \c seawolf.FILTER_PREFIX is correct while \c
+seawolf.notify.FILTER_PREFIX is not.
+
+\section buildinstall Building and Installing
+
+Instructions for how to build and install the Python bindings can be found in
+the BUILDING file included with libseawolf.
+
+*/
