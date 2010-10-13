@@ -91,7 +91,7 @@ libseawolf. For example,
 \code
 import seawolf as sw
 
-t = seawolf.Timer()
+t = sw.Timer()
 
 print t.getTotal()
 print t.getDelta()
@@ -102,7 +102,7 @@ print t.getDelta()
 
 import seawolf as sw
 
-c = seawolf.PID(0, 1, 1, 0)
+c = sw.PID(0, 1, 1, 0)
 c.start(0)
 
 print c.update(5)
@@ -119,7 +119,44 @@ seawolf.notify.FILTER_PREFIX is not.
 
 \section buildinstall Building and Installing
 
-Instructions for how to build and install the Python bindings can be found in
-the BUILDING file included with libseawolf.
+To build the Python bindings requires <a href="http://www.swig.org">swig</a> and
+Python development libraries and headers to be installed. This is of course in
+addition to the standard requirements for building libseawolf. On Ubuntu and
+other Debian-like systems the following should install all required packages,
+
+<pre>
+  # sudo apt-get install build-essential python-dev swig
+</pre>
+
+With prerequisite packages installed, the Python bindings can be built by
+executing
+
+<pre>
+  # make pylib
+</pre>
+
+from the top level source directory of the libseawolf distribution. If this
+process completes successfully, the package can be installed by executing
+
+<pre>
+  # sudo make pylib-install
+</pre>
+
+To verify the installation, execute
+
+<pre>
+  # python -c 'import seawolf'
+</pre>
+
+If this runs without error then the module has been correctly installed. If you
+receive an error similar to
+
+<pre>
+  ImportError: libseawolf.so.0: cannot open shared object file : No such file or directory
+</pre>
+
+Then ensure that libseawolf has been installed and is in your library search
+path (<tt>LD_LIBRARY_PATH</tt>). If it is properly installed, try running
+'<tt>sudo ldconfig</tt>' and retrying.
 
 */
