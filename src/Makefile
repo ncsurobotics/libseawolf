@@ -32,7 +32,7 @@ pylib-install: pylib
 $(OBJ): $(INCLUDES)
 
 clean:
-	-rm $(OBJ) $(LIB_NAME) 2> /dev/null
+	-rm -f $(OBJ) $(LIB_NAME) 2> /dev/null
 	-rm -rf python/build/ python/seawolf.py python/seawolf.pyc python/seawolf_wrap.c 2> /dev/null
 
 install: $(LIB_NAME)

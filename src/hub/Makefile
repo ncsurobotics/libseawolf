@@ -21,7 +21,7 @@ $(HUB_NAME): $(OBJ)
 $(OBJ): $(INCLUDES)
 
 clean:
-	-rm $(OBJ) $(HUB_NAME) 2> /dev/null
+	-rm -f $(OBJ) $(HUB_NAME) 2> /dev/null
 
 install: $(HUB_NAME)
 	install -m 0755 $(HUB_NAME) $(PREFIX)/bin
