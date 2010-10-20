@@ -8,6 +8,7 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <time.h>
 
 #define TIME_BUFFER_SIZE 64
