@@ -9,12 +9,16 @@
 /**
  * Make available POSIX functions
  */
-#define _POSIX_C_SOURCE 200112L
+#ifndef _POSIX_C_SOURCE
+# define _POSIX_C_SOURCE 200112L
+#endif
 
 /**
  * Make more functions available
  */
-#define _XOPEN_SOURCE 600
+#ifndef _XOPEN_SOURCE
+# define _XOPEN_SOURCE 600
+#endif
 
 /* Make some standard includes available */
 #include <assert.h>

@@ -1,5 +1,5 @@
 %module seawolf
-%begin %{
+%{
 #include "seawolf.h"
 %}
 
