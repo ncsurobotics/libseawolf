@@ -37,6 +37,8 @@ ifndef CONFIG
     CONFIG = build/config.linux.mk
   else ifeq ($(HOSTTYPE), OpenBSD)
     CONFIG = build/config.obsd.mk
+  else ifeq ($(HOSTTYPE), NetBSD)
+    CONFIG = build/config.netbsd.mk
   else
     # Fall back to Linux
     CONFIG = build/config.linux.mk
