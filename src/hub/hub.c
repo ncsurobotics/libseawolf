@@ -67,6 +67,9 @@ bool Hub_fileExists(const char* file) {
 static void Hub_catchSignal(int sig) {
     /* Caught a "nice" signal. Try to exit gracefully and properly */
     if(sig == SIGTERM || sig == SIGINT) {
+        /* Perform necessary sychronous shutdown of the net component before continuing */
+        Hub_Net_preClose();
+
         /* Run close in a detached thread to ensure memory for it is freed */
         pthread_detach(Task_background(_Hub_close));
         return;

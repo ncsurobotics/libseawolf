@@ -131,6 +131,19 @@ static void Hub_Net_initServerSocket(void) {
 }
 
 /**
+ * \brief Perform sychronous pre-shutdown for signal handlers
+ *
+ * Perform synchronous pre-shutdown for signal handlers. When a signal is
+ * recieved and goes unprocessed, Hub_mainLoop will consider this an error
+ * condition. Signal handlers can call this before starting a asychronous
+ * shutdown to avoid this issue.
+ */
+void Hub_Net_preClose(void) {
+    /* Set main loop to terminate */
+    run_mainloop = false;
+}
+
+/**
  * \brief Close the net subsystem
  *
  * Perform a controlled shutdown of the net subsystem. Free all associated
@@ -150,11 +163,11 @@ void Hub_Net_close(void) {
         return;
     }
 
-    /* Block until Hub_mainLoop exists */
+    /* Synchronize exit with mainLoop */
     pthread_mutex_lock(&mainloop_done_lock);
 
-    /* Set main loop to terminate */
-    run_mainloop = false;
+    /* Instruct mainLoop to terminate */
+    Hub_Net_preClose();
 
     /* Attempt to connect a socket to the address of the server socket which
        should cause the blocking select call to wake up */
@@ -197,9 +210,6 @@ void Hub_Net_mainLoop(void) {
     /* Reason provided on shutdown for kick */
     char* shutdown_kick = "Hub closing";
 
-    /* Signal mask passed to pselect */
-    sigset_t sigmask;
-
     /** File descriptor mask passed to select() */
     fd_set fdset_mask_r;
     Comm_Message* client_message;
@@ -226,12 +236,6 @@ void Hub_Net_mainLoop(void) {
     response->components[1] = strdup("CLOSING");
     closing_packed = Comm_packMessage(response);
     Hub_Net_responseDestroy(response);
-
-    /* pselect should ignore SIGTERM and SIGINT because these signals are
-       already being properly handled to shutdown the hub */
-    sigemptyset(&sigmask);
-    sigaddset(&sigmask, SIGTERM);
-    sigaddset(&sigmask, SIGINT);
 
     /* Create and ready the server socket */
     Hub_Net_initServerSocket();
@@ -261,7 +265,7 @@ void Hub_Net_mainLoop(void) {
 
         /* Perform the select call, return -1 is an error, and 0 means no
            results */
-        n = pselect(FD_SETSIZE, &fdset_mask_r, NULL, NULL, NULL, &sigmask);
+        n = select(FD_SETSIZE, &fdset_mask_r, NULL, NULL, NULL);
 
         /* When the hub is closing Hub_Net_close will set run_mainloop to 0 and
            then attempt to open a connection to the server socket. This will
