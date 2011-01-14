@@ -7,6 +7,9 @@ import var
 import logging
 import notify
 
+# For packing data
+import struct
+
 # Constants
 CRITICAL = _sw.CRITICAL
 ERROR = _sw.ERROR
@@ -79,8 +82,18 @@ class Serial:
     def sendByte(self, *args):
         return _sw.Serial_sendByte(self.sp, *args)
 
-    def send(self, *args):
-        return _sw.Serial_send(self.sp, *args)
+    def send(self, data):
+        if isinstance(data, basestring):
+            return _sw.Serial_send(self.sp, data)
+        elif isinstance(data, int):
+            return _sw.Serial_send(self.sp, struct.pack("B", data))
+        elif isinstance(data, list):
+            string = ""
+            for b in data:
+                string += struct.pack("B", b)
+            return _sw.Serial_send(self.sp, string)
+        else:
+            raise TypeError("Invalid argument")
 
     def setDTR(self, *args):
         return _sw.Serial_setDTR(self.sp, *args)

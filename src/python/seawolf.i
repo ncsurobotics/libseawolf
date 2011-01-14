@@ -12,6 +12,12 @@
     free($1);
 }
 
+/* Handle input argument to Serial_send */
+%typemap(in) (void* buffer, size_t count) {
+    $1 = PyString_AsString($input);
+    $2 = PyString_Size($input);
+}
+
 /* "Bad" functions that won't work in Python */
 %ignore Seawolf_atExit;
 
