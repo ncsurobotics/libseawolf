@@ -7,6 +7,9 @@ syntax: glob
 *.swp
 
 syntax: regexp
-^seawolf-hub$
+^src/hub/seawolf-hub$
 ^doc/html/
 ^doc/hub/html/
+^src/python/build/
+^src/python/seawolf.py$
+^src/python/seawolf_wrap.c$
