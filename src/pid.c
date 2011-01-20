@@ -42,34 +42,21 @@ PID* PID_new(double sp, double p, double i, double d) {
     pid->e_last = 0;
     pid->e_dt = 0;
 
+    pid->paused = true;
+
     return pid;
 }
 
 /**
- * \brief Start/reset the PID
+ * \brief Temporary pause a PIDs operation
  *
- * Starts/resets the PID. This should be called if the set point is
- * altered. This function returns an initial manipulated variable, though since
- * no differential component can be calculated yet, and the integral component
- * will be zero, this returned value is based only on the proportional part of
- * the controller p*(pv-mv)
+ * Pause the PID timers. The PID will resumning normal operation without
+ * reseting the integral component at the next update.
  *
  * \param pid The controller object
- * \param pv The value of an initial process variable
- * \return A "best guess" initial manipulated variable (mv) as described above
  */
-double PID_start(PID* pid, double pv) {
-    double e = pid->sp - pv;
-    double mv;
-
-    /* Zero running error, and store current error as last */
-    pid->e_dt = 0;
-    pid->e_last = e;
-    Timer_reset(pid->timer);
-
-    /* Initial run -- the safest thing to do is return only proportional term */
-    mv = pid->p * e;
-    return mv;
+void PID_pause(PID* pid) {
+    pid->paused = true;
 }
 
 /**
@@ -92,8 +79,15 @@ double PID_update(PID* pid, double pv) {
 
     /* Calculate output value */
     mv  = pid->p * e;
-    mv += pid->i * pid->e_dt;
-    mv += pid->d * ((e - pid->e_last) / delta_t);
+
+    /* Skip these if we are paused */
+    if(pid->paused == false) {
+        mv += pid->i * pid->e_dt;
+        mv += pid->d * ((e - pid->e_last) / delta_t);
+    }
+
+    /* Unpause */
+    pid->paused = false;
 
     /* Store error */
     pid->e_last = e;
@@ -105,7 +99,7 @@ double PID_update(PID* pid, double pv) {
  * \brief Reset the integral component
  *
  * Reset the cumulative error associated with the integral component of the
- * controller to 0
+ * controller to 0.
  *
  * \param pid The controller object
  */
@@ -117,13 +111,16 @@ void PID_resetIntegral(PID* pid) {
  * \brief Change the set point for the controller
  *
  * Change the set point (sp) for the controller. It is a good idea to reset the
- * controller after calling this
+ * controller after calling this. The PID is considered "paused" after this so
+ * the next update call will reinitialize the controller and reset the
+ * derivative component.
  *
  * \param pid The controller object
  * \param sp The new set point for the controller
  */
 void PID_setSetPoint(PID* pid, double sp) {
     pid->sp = sp;
+    pid->paused = true;
 }
 
 /**

@@ -53,10 +53,15 @@ typedef struct {
      * \private
      */
     double e_dt;
+
+    /**
+     * Run state of the controller
+     */
+    bool paused;
 } PID;
 
 PID* PID_new(double sp, double p, double i, double d);
-double PID_start(PID* pid, double pv);
+void PID_pause(PID* pid);
 double PID_update(PID* pid, double pv);
 void PID_resetIntegral(PID* pid);
 void PID_setCoefficients(PID* pid, double p, double i, double d);

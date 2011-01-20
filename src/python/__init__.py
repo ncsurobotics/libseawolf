@@ -105,20 +105,20 @@ class PID:
     def __init__(self, *args):
         self.pid = _sw.PID_new(*args)
 
-    def start(self, *args):
-        return _sw.PID_start(self.pid, *args);
+    def pause(self, *args):
+        _sw.PID_pause(self.pid)
 
     def update(self, *args):
-        return _sw.PID_update(self.pid, *args);
+        return _sw.PID_update(self.pid, *args)
 
     def resetIntegral(self, *args):
-        return _sw.PID_resetIntegral(self.pid, *args);
+        return _sw.PID_resetIntegral(self.pid, *args)
 
     def setCoefficients(self, *args):
-        return _sw.PID_setCoefficients(self.pid, *args);
+        return _sw.PID_setCoefficients(self.pid, *args)
 
     def setSetPoint(self, *args):
-        return _sw.PID_setSetPoint(self.pid, *args);
+        return _sw.PID_setSetPoint(self.pid, *args)
 
     def __del__(self, *args):
         _sw.PID_destroy(self.pid)
