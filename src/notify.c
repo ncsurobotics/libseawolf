@@ -74,6 +74,11 @@ void Notify_inputMessage(Comm_Message* message) {
     }
 
     Comm_Message_destroyUnpacked(message);
+
+    int queue_size = Queue_getSize(notification_queue);
+    if(queue_size >= 5) {
+        Logging_log(CRITICAL, Util_format("Notification queue very long! (%d)", queue_size));
+    }
 }
 
 /**
