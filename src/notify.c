@@ -21,7 +21,7 @@ static char** filters = NULL;
 static int filters_n = 0;
 
 /** Queue of buffered, incoming messages */
-static Queue* notification_queue;
+static Queue* notification_queue = NULL;
 
 /** Default policy for messages when no filters are in place */
 static bool default_policy = NOTIFY_POLICY_DROP;

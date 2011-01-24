@@ -76,12 +76,12 @@ void Seawolf_init(const char* name) {
     /* Ensure shutdown during exit */
     atexit(Seawolf_close);
 
-    /* Call all initialization methods. Order here *is* important. Logging
-       relies on the database being up for instance */
+    Notify_init(); /* Initialize Notify before Comm since Comm may otherwise
+                      forward notification messages to it before it's ready for
+                      them */
     Comm_init();
     Var_init();
     Logging_init();
-    Notify_init();
     Serial_init();
 
     /* Log message announcing application launch */
