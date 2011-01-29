@@ -2,15 +2,12 @@
 #ifndef __SEAWOLF_HUB_INCLUDE_H
 #define __SEAWOLF_HUB_INCLUDE_H
 
+#include "seawolf/mem_pool.h"
+
 #include <stdbool.h>
 
 #define MAX_CLIENTS (FD_SETSIZE - 1)
 #define MAX_ERRORS 4
-
-#define RESPOND_TO_NONE 0
-#define RESPOND_TO_SENDER 1
-#define RESPOND_TO_ALL 2
-#define SHUTDOWN_SENDER 3
 
 /**
  * Client state
@@ -30,21 +27,6 @@ typedef enum {
      * Client is authenticated (full connected)
      */
     CONNECTED,
-
-    /**
-     * Client has requested an orderly shutdown
-     */
-    PARTING,
-
-    /**
-     * Client is being kicked from the server
-     */
-    KICKING,
-
-    /**
-     * Client appears to have already disconnected
-     */
-    DEAD,
 
     /**
      * Client connection is closed
@@ -72,9 +54,14 @@ typedef struct {
     char* name;
 
     /**
-     * Set to designate why the client is being kicked from the server
+     * Notify filters
      */
-    char* kick_reason;
+    char** filters;
+    
+    /**
+     * Number of filters
+     */
+    int filters_n;
 } Hub_Client;
 
 /**
@@ -110,15 +97,21 @@ typedef struct {
 void Hub_exit(void);
 void Hub_exitError(void);
 bool Hub_fileExists(const char* file);
-int Hub_Process_process(Comm_Message* message, Comm_Message** response, Hub_Client* client);
+int Hub_Process_process(Hub_Client* client, Comm_Message* message);
 
-void Hub_Net_mainLoop(void);
 Comm_Message* Hub_Net_receiveMessage(Hub_Client* client);
-int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* packed_message);
 int Hub_Net_sendMessage(Hub_Client* client, Comm_Message* message);
-void Hub_Net_responseDestroy(Comm_Message* response);
+void Hub_Net_broadcastMessage(Comm_Message* message);
+
+void Hub_Client_kick(Hub_Client* client, char* reason);
+void Hub_Client_close(Hub_Client* client);
+
+void Hub_Net_init(void);
 void Hub_Net_preClose(void);
 void Hub_Net_close(void);
+List* Hub_Net_getConnectedClients(void);
+void Hub_Net_markClientClosed(Hub_Client* client);
+void Hub_Net_mainLoop(void);
 
 void Hub_Config_init(void);
 void Hub_Config_loadConfig(const char* filename);

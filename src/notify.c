@@ -73,7 +73,7 @@ void Notify_inputMessage(Comm_Message* message) {
         Queue_append(notification_queue, strdup(msg));
     }
 
-    Comm_Message_destroyUnpacked(message);
+    Comm_Message_destroy(message);
 
     int queue_size = Queue_getSize(notification_queue);
     if(queue_size >= 5) {

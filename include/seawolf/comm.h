@@ -5,6 +5,8 @@
 #ifndef __SEAWOLF_COMM_INCLUDE_H
 #define __SEAWOLF_COMM_INCLUDE_H
 
+#include "seawolf/mem_pool.h"
+
 /**
  * \addtogroup Comm
  * \{
@@ -34,6 +36,11 @@ typedef struct {
      * The number of components in the message
      */
     unsigned short count;
+
+    /**
+     * The MemPool allocation that backs this message
+     */
+    MemPool_Alloc* alloc;
 } Comm_Message;
 
 /**
@@ -65,6 +72,11 @@ typedef struct {
      * The packed message data
      */
     char* data;
+
+    /**
+     * The MemPool allocation that backs this message
+     */
+    MemPool_Alloc* alloc;
 } Comm_PackedMessage;
 
 /** \} */
@@ -80,11 +92,11 @@ Comm_Message* Comm_sendMessage(Comm_Message* message);
 void Comm_assignRequestID(Comm_Message* message);
 Comm_PackedMessage* Comm_packMessage(Comm_Message* message);
 Comm_Message* Comm_unpackMessage(Comm_PackedMessage* packed_message);
+Comm_Message* Comm_Message_newWithAlloc(MemPool_Alloc* alloc, unsigned int component_count);
 Comm_Message* Comm_Message_new(unsigned int component_count);
+Comm_PackedMessage* Comm_PackedMessage_newWithAlloc(MemPool_Alloc* alloc);
 Comm_PackedMessage* Comm_PackedMessage_new(void);
 void Comm_Message_destroy(Comm_Message* message);
-void Comm_Message_destroyUnpacked(Comm_Message* message);
-void Comm_PackedMessage_destroy(Comm_PackedMessage* packed_message);
 void Comm_setPassword(const char* password);
 void Comm_setServer(const char* server);
 void Comm_setPort(uint16_t port);

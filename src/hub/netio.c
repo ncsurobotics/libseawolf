@@ -16,6 +16,8 @@
  * \{
  */
 
+static int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* packed_message);
+
 /**
  * \brief Receive a message from the given client
  *
@@ -34,7 +36,7 @@ Comm_Message* Hub_Net_receiveMessage(Hub_Client* client) {
 
     packed_message = Comm_PackedMessage_new();
     packed_message->length = COMM_MESSAGE_PREFIX_LEN;
-    packed_message->data = malloc(packed_message->length);
+    packed_message->data = MemPool_reserve(packed_message->alloc, packed_message->length);
 
     /* Read in first two bytes without removing them from the socket
        buffer. Theses bytes give us the overall message length. */
@@ -50,7 +52,9 @@ Comm_Message* Hub_Net_receiveMessage(Hub_Client* client) {
     /* Convert to short */
     total_data_size = ntohs(((uint16_t*)packed_message->data)[0]);
     packed_message->length += total_data_size;
-    packed_message->data = realloc(packed_message->data, packed_message->length);
+    
+    /* Reserve the rest of the space */
+    MemPool_reserve(packed_message->alloc, total_data_size);
 
     received = 0;
     while(received < total_data_size) {
@@ -63,18 +67,16 @@ Comm_Message* Hub_Net_receiveMessage(Hub_Client* client) {
         received += n;
     }
 
-    /* Unpack message and destroy packed message */
+    /* Unpack message */
     message = Comm_unpackMessage(packed_message);
-    Comm_PackedMessage_destroy(packed_message);
-
     return message;
 
  receive_error:
     Hub_Logging_log(ERROR, "Error receiving data (lost connection to client). Closing connection");
-    Comm_PackedMessage_destroy(packed_message);
-    client->state = DEAD;
-    return NULL;
+    MemPool_free(packed_message->alloc);
+    Hub_Net_markClientClosed(client);
 
+    return NULL;
 }
 
 /**
@@ -86,7 +88,7 @@ Comm_Message* Hub_Net_receiveMessage(Hub_Client* client) {
  * \param packed_message The packed message to send
  * \return The number of bytes sent or -1 in the even of an error
  */
-int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* packed_message) {
+static int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* packed_message) {
     struct pollfd fd = {.fd = client->sock, .events = POLLOUT};
     int n = -1;
 
@@ -121,25 +123,33 @@ int Hub_Net_sendMessage(Hub_Client* client, Comm_Message* message) {
     /* Send packed message */
     n = Hub_Net_sendPackedMessage(client, packed_message);
 
-    /* Destroy sent message */
-    Comm_PackedMessage_destroy(packed_message);
-
     return n;
 }
 
 /**
- * \brief Destroy a message
+ * \brief Broadcast a message
  *
- * Destroy a message by freeing each individual component and then freeing the
- * message structure itself
+ * Efficiently send a message to all connected clients. The message is packed
+ * once and then sent to each client
  *
- * \param response The message to destoy
+ * \param message The message to broadcast
  */
-void Hub_Net_responseDestroy(Comm_Message* response) {
-    for(int i = 0; i < response->count; i++) {
-        free(response->components[i]);
+void Hub_Net_broadcastMessage(Comm_Message* message) {
+    Comm_PackedMessage* packed_message = Comm_packMessage(message);
+    List* clients = Hub_Net_getConnectedClients();
+    int client_count = List_getSize(clients);
+    Hub_Client* client;
+
+    for(int i = 0; i < client_count; i++) {
+        client = List_get(clients, i);
+        if(client->state == CONNECTED) {
+            if(Hub_Net_sendPackedMessage(client, packed_message) < 0) {
+                /* Failed to send, shutdown client */
+                Hub_Logging_log(DEBUG, "Client disconnected, shutting down client");
+                Hub_Net_markClientClosed(client);
+            }
+        }
     }
-    Comm_Message_destroy(response);
 }
 
 /** \} */

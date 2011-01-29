@@ -16,15 +16,15 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-static void Hub_Net_removeClient(Hub_Client* client);
-static void Hub_Net_broadcast(Comm_Message* message);
+static void Hub_Net_removeMarkedClosedClients(void);
 static void Hub_Net_initServerSocket(void);
 
 /* List of active clients */
 static List* clients = NULL;
+static List* closed_clients = NULL;
 
 /** Server socket */
-static int svr_sock = 0;
+static int svr_sock = -1;
 
 /** Server socket bind address */
 struct sockaddr_in svr_addr;
@@ -46,48 +46,51 @@ static pthread_mutex_t mainloop_done_lock = PTHREAD_MUTEX_INITIALIZER;
  */
 
 /**
- * \brief Remove a client
+ * \brief Remove clients previously marked as closed
  *
- * Remove a client from the client list and close the associated socket
- *
- * \param client The client to remove
+ * Remove clients that have been marked closed with a call to
+ * Hub_Net_markClientCloesd
  */
-static void Hub_Net_removeClient(Hub_Client* client) {
-    int index = List_indexOf(clients, client);
+static void Hub_Net_removeMarkedClosedClients(void) {
+    int index;
+    Hub_Client* client;
 
-    shutdown(client->sock, SHUT_RDWR);
-    List_remove(clients, index);
-    client->state = CLOSED;
+    while((client = List_remove(closed_clients, 0)) != NULL) {
+        index = List_indexOf(clients, client);
 
-    if(client->kick_reason) {
-        free(client->kick_reason);
+        shutdown(client->sock, SHUT_RDWR);
+        close(client->sock);
+        
+        List_remove(clients, index);
+        client->state = CLOSED;
+        
+        if(client->filters) {
+            for(int i = 0; i < client->filters_n; i++) {
+                free(client->filters[i]);
+            }
+            free(client->filters);
+        }
+
+        free(client);
     }
-    free(client);
 }
 
 /**
- * \brief Broadcast a message to all clients
+ * \brief Mark a client as closed
  *
- * Send the given message to all connected clients
+ * Mark a client as closed. It's resources will be released on the next call to
+ * Hub_Net_removeMarkedClosedClients()
  *
- * \param message The message to broadcast
+ * \param client Mark the given client as closed
  */
-static void Hub_Net_broadcast(Comm_Message* message) {
-    Comm_PackedMessage* packed_message = Comm_packMessage(message);
-    Hub_Client* client;
-    int client_count = List_getSize(clients);
+void Hub_Net_markClientClosed(Hub_Client* client) {
+    client->state = CLOSED;
+    List_append(closed_clients, client);
+}
 
-    for(int i = 0; i < client_count; i++) {
-        client = List_get(clients, i);
-        if(client->state == CONNECTED) {
-            if(Hub_Net_sendPackedMessage(client, packed_message) < 0) {
-                /* Failed to send, shutdown client */
-                Hub_Logging_log(DEBUG, "Client disconnected, shutting down client");
-                client->state = DEAD;
-            }
-        }
-    }
-    Comm_PackedMessage_destroy(packed_message);
+void Hub_Net_init(void) {
+    clients = List_new();
+    closed_clients = List_new();
 }
 
 /**
@@ -152,41 +155,42 @@ void Hub_Net_preClose(void) {
 void Hub_Net_close(void) {
     int tmp_sock;
 
-    /* If the main loop is not yet running then we don't have much cleanup to
-       do. If there is a server socket attempt to close it and then simply
-       return */
-    if(!mainloop_running) {
-        if(svr_sock > 0) {
-            close(svr_sock);
-        }
-
-        return;
-    }
-
     /* Synchronize exit with mainLoop */
     pthread_mutex_lock(&mainloop_done_lock);
 
-    /* Instruct mainLoop to terminate */
-    Hub_Net_preClose();
+    if(mainloop_running) {
+        /* Instruct mainLoop to terminate */
+        Hub_Net_preClose();
 
-    /* Attempt to connect a socket to the address of the server socket which
-       should cause the blocking select call to wake up */
-    tmp_sock = socket(AF_INET, SOCK_STREAM, 0);
-    if(connect(tmp_sock, (struct sockaddr*) &svr_addr, sizeof(svr_addr))) {
-        Hub_Logging_log(ERROR, "Unable to complete graceful shutdown!");
-        Hub_exitError();
+        /* Attempt to connect a socket to the address of the server socket which
+           should cause the blocking select call to wake up */
+        tmp_sock = socket(AF_INET, SOCK_STREAM, 0);
+        if(connect(tmp_sock, (struct sockaddr*) &svr_addr, sizeof(svr_addr))) {
+            Hub_Logging_log(ERROR, "Unable to complete graceful shutdown!");
+            Hub_exitError();
+        }
+        
+        /* Now wait for Hub_mainLoop to terminate */
+        while(mainloop_running) {
+            pthread_cond_wait(&mainloop_done, &mainloop_done_lock);
+        }
+
+        /* Close the temporary socket */
+        shutdown(tmp_sock, SHUT_RDWR);
+        close(tmp_sock);
     }
-
-    /* Now wait for Hub_mainLoop to terminate */
-    while(mainloop_running) {
-        pthread_cond_wait(&mainloop_done, &mainloop_done_lock);
-    }
-
-    /* Close the temporary socket */
-    shutdown(tmp_sock, SHUT_RDWR);
-    close(tmp_sock);
 
     pthread_mutex_unlock(&mainloop_done_lock);
+
+    if(clients) {
+        /* Free the clients lists */
+        List_destroy(clients);
+        List_destroy(closed_clients);
+    }
+}
+
+List* Hub_Net_getConnectedClients(void) {
+    return clients;
 }
 
 /**
@@ -204,38 +208,12 @@ void Hub_Net_mainLoop(void) {
        can be allocated for them */
     int client_new = 0;
 
-    /* Default reason provided for a kick if one is not provided */
-    char* default_kick = "kicked";
-
-    /* Reason provided on shutdown for kick */
-    char* shutdown_kick = "Hub closing";
-
     /** File descriptor mask passed to select() */
     fd_set fdset_mask_r;
     Comm_Message* client_message;
-    Comm_Message* response;
-    Comm_PackedMessage* closing_packed;
-    Comm_Message* kick_message;
     Hub_Client* client;
     int client_count;
-    int action;
     int n, i; /* misc */
-
-    /* Create clients list */
-    clients = List_new();
-
-    /* Store partial kicked message */
-    kick_message = Comm_Message_new(3);
-    kick_message->components[0] = strdup("COMM");
-    kick_message->components[1] = strdup("KICKING");
-    kick_message->components[2] = NULL;
-
-    /* Create prepacked closing message */
-    response = Comm_Message_new(2);
-    response->components[0] = strdup("COMM");
-    response->components[1] = strdup("CLOSING");
-    closing_packed = Comm_packMessage(response);
-    Hub_Net_responseDestroy(response);
 
     /* Create and ready the server socket */
     Hub_Net_initServerSocket();
@@ -292,9 +270,11 @@ void Hub_Net_mainLoop(void) {
 
             if(client_new < 0) {
                 Hub_Logging_log(ERROR, "Error accepting new client connection");
+                perror("Error accepting new client");
             } else if(client_count >= MAX_CLIENTS) {
                 Hub_Logging_log(ERROR, Util_format("Unable to accept new client connection! Maximum clients (%d) exceeded", MAX_CLIENTS));
                 shutdown(client_new, SHUT_RDWR);
+                close(client_new);
             } else {
                 Hub_Logging_log(DEBUG, "Accepted new client connection");
 
@@ -306,7 +286,8 @@ void Hub_Net_mainLoop(void) {
                 client->sock = client_new;
                 client->state = UNAUTHENTICATED;
                 client->name = NULL;
-                client->kick_reason = NULL;
+                client->filters = NULL;
+                client->filters_n = 0;
 
                 List_append(clients, client);
             }
@@ -327,75 +308,28 @@ void Hub_Net_mainLoop(void) {
                 }
 
                 /* Process message */
-                action = Hub_Process_process(client_message, &response, client);
-
-                if(action == RESPOND_TO_SENDER || (action == SHUTDOWN_SENDER && response != NULL)) {
-                    n = Hub_Net_sendMessage(client, response);
-                    if(n < 0 && client->state != DEAD) {
-                        /* Failed to send, shutdown client */
-                        Hub_Logging_log(DEBUG, "Client disconnected, shutting down client");
-                        client->state = DEAD;
-                    }
-                } else if(action == RESPOND_TO_ALL) {
-                    Hub_Net_broadcast(response);
-                }
+                Hub_Process_process(client, client_message);
 
                 /* Destroy client message */
-                Comm_Message_destroyUnpacked(client_message);
-
-                /* Destroy response */
-                if(response) {
-                    Hub_Net_responseDestroy(response);
-                }
+                Comm_Message_destroy(client_message);
             }
         }
 
-        /* Remove closed clients */
-        i = 0;
-        while((client = List_get(clients, i)) != NULL) {
-            if(client->state == PARTING) {
-                /* Client is closing on good terms */
-                Hub_Logging_log(INFO, "Shutting down client");
-                Hub_Net_sendPackedMessage(client, closing_packed);
-                Hub_Net_removeClient(client);
-            } else if(client->state == KICKING) {
-                Hub_Logging_log(INFO, "Kicking client");
-                if(client->kick_reason) {
-                    kick_message->components[2] = client->kick_reason;
-                } else {
-                    kick_message->components[2] = default_kick;
-                }
-
-                Hub_Net_sendMessage(client, kick_message);
-                Hub_Net_removeClient(client);
-            } else if(client->state == DEAD) {
-                /* Client has died or can't otherwise be nicely
-                   disconnected. Just shutdown the socket and remove from the
-                   clients list */
-                Hub_Net_removeClient(client);
-            } else {
-                i++;
-            }
-        }
+        /* Cleanup any clients that have been closed */
+        Hub_Net_removeMarkedClosedClients();
     }
 
-    /* Cleanup */
-    kick_message->components[2] = shutdown_kick;
-    Hub_Net_broadcast(kick_message);
-    while((client = List_get(clients, 0)) != NULL) {
-        Hub_Net_removeClient(client);
+    /* Kick all still attached clients */
+    for(i = 0; (client = List_get(clients, i)) != NULL; i++) {
+        Hub_Client_kick(client, "Hub closing");
     }
-
-    List_destroy(clients);
-
-    free(kick_message->components[0]);
-    free(kick_message->components[1]);
-
-    Comm_PackedMessage_destroy(closing_packed);
-    Comm_Message_destroy(kick_message);
+    Hub_Net_removeMarkedClosedClients();
 
     pthread_mutex_lock(&mainloop_done_lock);
     mainloop_running = false;
+    shutdown(svr_sock, SHUT_RDWR);
+    close(svr_sock);
+
     pthread_cond_broadcast(&mainloop_done);
     pthread_mutex_unlock(&mainloop_done_lock);
 }

@@ -4,6 +4,7 @@
  */
 
 #include "seawolf.h"
+#include "seawolf/mem_pool.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -154,8 +155,8 @@ static void Comm_authenticate(void) {
         if(response == NULL || strcmp(response->components[1], "SUCCESS") != 0) {
             Logging_log(CRITICAL, "Failed to authenticate with hub server!");
         } else {
-            Comm_Message_destroy(auth_message);
-            Comm_Message_destroyUnpacked(response);
+            MemPool_free(auth_message->alloc);
+            MemPool_free(response->alloc);
             return;
         }
     } else {
@@ -186,11 +187,11 @@ static Comm_PackedMessage* Comm_receivePackedMessage(void) {
     total_data_size = ntohs(total_data_size);
     packed_message = Comm_PackedMessage_new();
     packed_message->length = total_data_size + COMM_MESSAGE_PREFIX_LEN;
-    packed_message->data = malloc(packed_message->length);
+    packed_message->data = MemPool_reserve(packed_message->alloc, packed_message->length);
 
     n = recv(comm_socket, packed_message->data, packed_message->length, MSG_WAITALL);
     if(n != packed_message->length) {
-        Comm_PackedMessage_destroy(packed_message);
+        MemPool_free(packed_message->alloc);
         return NULL;
     }
 
@@ -242,7 +243,6 @@ static int Comm_receiveThread(void) {
 
         /* Unpack message */
         message = Comm_unpackMessage(packed_message);
-        Comm_PackedMessage_destroy(packed_message);
 
         if(message->request_id != 0) {
             pthread_mutex_lock(&response_set_lock);
@@ -258,10 +258,10 @@ static int Comm_receiveThread(void) {
                 Logging_log(ERROR, __Util_format("I've been kicked: %s", message->components[2]));
                 Seawolf_exitError();
             }
-            Comm_Message_destroyUnpacked(message);
+            MemPool_free(message->alloc);
         } else {
             /* Unknown, unsolicited message */
-            Comm_Message_destroyUnpacked(message);
+            MemPool_free(message->alloc);
         }
     }
 
@@ -302,9 +302,6 @@ Comm_Message* Comm_sendMessage(Comm_Message* message) {
     pthread_mutex_lock(&send_lock);
     n = send(comm_socket, packed_message->data, packed_message->length, 0);
     pthread_mutex_unlock(&send_lock);
-
-    /* Destroy sent message */
-    Comm_PackedMessage_destroy(packed_message);
 
     /* Send error */
     if(n < 0) {
@@ -384,9 +381,9 @@ void Comm_assignRequestID(Comm_Message* message) {
  * \return The packed equivalent of message
  */
 Comm_PackedMessage* Comm_packMessage(Comm_Message* message) {
-    Comm_PackedMessage* packed_message = Comm_PackedMessage_new();
+    Comm_PackedMessage* packed_message = Comm_PackedMessage_newWithAlloc(message->alloc);
     size_t total_data_length = 0;
-    size_t* component_lengths = malloc(sizeof(size_t) * message->count);
+    size_t* component_lengths = MemPool_reserve(message->alloc, sizeof(size_t) * message->count);
     char* buffer;
     int i;
 
@@ -398,7 +395,7 @@ Comm_PackedMessage* Comm_packMessage(Comm_Message* message) {
 
     /* Store message information */
     packed_message->length = total_data_length + COMM_MESSAGE_PREFIX_LEN;
-    packed_message->data = malloc(packed_message->length);
+    packed_message->data = MemPool_reserve(message->alloc, packed_message->length);
 
     /* Build packed message header */
     ((uint16_t*)packed_message->data)[0] = htons(total_data_length);
@@ -411,8 +408,6 @@ Comm_PackedMessage* Comm_packMessage(Comm_Message* message) {
         memcpy(buffer, message->components[i], component_lengths[i]);
         buffer += component_lengths[i];
     }
-
-    free(component_lengths);
 
     return packed_message;
 }
@@ -427,7 +422,7 @@ Comm_PackedMessage* Comm_packMessage(Comm_Message* message) {
  * \return The unpacked message
  */
 Comm_Message* Comm_unpackMessage(Comm_PackedMessage* packed_message) {
-    Comm_Message* message = Comm_Message_new(0);
+    Comm_Message* message = Comm_Message_newWithAlloc(packed_message->alloc, 0);
     size_t data_length = ntohs(((uint16_t*)packed_message->data)[0]);
 
     /* Build message meta information */
@@ -435,11 +430,11 @@ Comm_Message* Comm_unpackMessage(Comm_PackedMessage* packed_message) {
     message->count = ntohs(((uint16_t*)packed_message->data)[2]);
     assert(message->count != 0);
 
-    message->components = malloc(sizeof(char*) * message->count);
+    message->components = MemPool_reserve(message->alloc, sizeof(char*) * message->count);
 
     /* Extract components -- we allocate all the space to the first and use the
        rest of the elements as indexes */
-    message->components[0] = malloc(data_length);
+    message->components[0] = MemPool_reserve(message->alloc, data_length);
     memcpy(message->components[0], packed_message->data + COMM_MESSAGE_PREFIX_LEN, data_length);
 
     /* Point the rest of the components into the space allocated to the first */
@@ -454,25 +449,41 @@ Comm_Message* Comm_unpackMessage(Comm_PackedMessage* packed_message) {
  * \brief Create a new message
  *
  * Create a new message with space for the given number of components. Space is
- * only allocated for the char pointers to the componenets, not to the
+ * only allocated for the char pointers to the components, not to the
  * components themselves. Space for the components should be allocated and freed
  * separately.
  *
+ * \param alloc The MemPool allocation to allocate space for this message from
  * \param component_count The number of components to make space for. If component_count is 0, no allocation is done
  * \return A new message
  */
-Comm_Message* Comm_Message_new(unsigned int component_count) {
-    Comm_Message* message = malloc(sizeof(Comm_Message));
+Comm_Message* Comm_Message_newWithAlloc(MemPool_Alloc* alloc, unsigned int component_count) {
+    Comm_Message* message = MemPool_reserve(alloc, sizeof(Comm_Message));
 
     message->request_id = 0;
     message->count = component_count;
     message->components = NULL;
+    message->alloc = alloc;
 
     if(component_count) {
-        message->components = malloc(sizeof(char*) * component_count);
+        message->components = MemPool_reserve(alloc, sizeof(char*) * component_count);
     }
 
     return message;
+}
+
+/**
+ * \brief Create a new message
+ *
+ * Allocate and return a new message using a new allocation
+ *
+ * \param component_count The number of components to make space for
+ * \return The newly allocated message
+ * \see Comm_Message_newWithAlloc
+ */
+Comm_Message* Comm_Message_new(unsigned int component_count) {
+    MemPool_Alloc* alloc = MemPool_alloc();
+    return Comm_Message_newWithAlloc(alloc, component_count);
 }
 
 /**
@@ -481,56 +492,30 @@ Comm_Message* Comm_Message_new(unsigned int component_count) {
  * Return a new, emtpy packed message. No space is allocated to store data and
  * this should be allocated separately.
  *
+ * \param alloc The MemPool allocation to allocate space for this message from
  * \return A new packed message object
  */
-Comm_PackedMessage* Comm_PackedMessage_new(void) {
-    Comm_PackedMessage* packed_message = malloc(sizeof(Comm_PackedMessage));
+Comm_PackedMessage* Comm_PackedMessage_newWithAlloc(MemPool_Alloc* alloc) {
+    Comm_PackedMessage* packed_message = MemPool_reserve(alloc, sizeof(Comm_PackedMessage));
 
     packed_message->length = 0;
     packed_message->data = NULL;
+    packed_message->alloc = alloc;
 
     return packed_message;
 }
 
 /**
- * \brief Destroy a message object
+ * \brief Create a new packed message object
  *
- * Free memory allocated to the given message, but not memory that may have been
- * allocated to store the components themselves. If the memory allocated to
- * components needs to be freed, this should be done either before or after a
- * call to Comm_Message_destroy()
+ * Return a new packed message object allocated from a new MemPool allocation
  *
- * \param message The object to free
+ * \return A new packed message object
+ * \see Comm_PackedMessage_newWithAlloc
  */
-void Comm_Message_destroy(Comm_Message* message) {
-    if(message->components) {
-        free(message->components);
-    }
-    free(message);
-}
-
-/**
- * \brief Destroy an unpacked message
- *
- * Free all memory allocated to a message returned by Comm_unpackMessage()
- *
- * \param message The message object to free
- */
-void Comm_Message_destroyUnpacked(Comm_Message* message) {
-    free(message->components[0]);
-    Comm_Message_destroy(message);
-}
-
-/**
- * \brief Destroy a packed message
- *
- * Free all memory associated with a packed message including the message data
- *
- * \param packed_message The packed message object to free
- */
-void Comm_PackedMessage_destroy(Comm_PackedMessage* packed_message) {
-    free(packed_message->data);
-    free(packed_message);
+Comm_PackedMessage* Comm_PackedMessage_new(void) {
+    MemPool_Alloc* alloc = MemPool_alloc();
+    return Comm_PackedMessage_newWithAlloc(alloc);
 }
 
 /**
@@ -567,6 +552,18 @@ void Comm_setPort(uint16_t port) {
 }
 
 /**
+ * \brief Destroy a message
+ *
+ * Free all memory associated with a message and any packed message derived from
+ * this message
+ *
+ * \param message The message to free
+ */
+void Comm_Message_destroy(Comm_Message* message) {
+    MemPool_free(message->alloc);
+}
+
+/**
  * \brief Close the Comm component
  *
  * Close the Comm component; close all connections, free memory, etc.
@@ -581,19 +578,13 @@ void Comm_close(void) {
     if(initialized) {
         if(!hub_shutdown) {
             message = Comm_Message_new(2);
-            message->components[0] = strdup("COMM");
-            message->components[1] = strdup("SHUTDOWN");
+            message->components[0] = MemPool_strdup(message->alloc, "COMM");
+            message->components[1] = MemPool_strdup(message->alloc, "SHUTDOWN");
             Comm_assignRequestID(message);
 
             response = Comm_sendMessage(message);
 
-            free(message->components[0]);
-            free(message->components[1]);
-            Comm_Message_destroy(message);
-
-            if(response) {
-                Comm_Message_destroyUnpacked(response);
-            }
+            MemPool_free(message->alloc);
         }
 
         shutdown(comm_socket, SHUT_RDWR);

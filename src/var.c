@@ -72,7 +72,7 @@ float Var_get(char* name) {
         value = 0;
     }
 
-    Comm_Message_destroyUnpacked(response);
+    Comm_Message_destroy(response);
     Comm_Message_destroy(variable_request);
 
     return value;

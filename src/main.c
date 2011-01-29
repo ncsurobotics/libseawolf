@@ -4,6 +4,7 @@
  */
 
 #include "seawolf.h"
+#include "seawolf/mem_pool.h"
 
 #include <signal.h>
 
@@ -76,6 +77,7 @@ void Seawolf_init(const char* name) {
     /* Ensure shutdown during exit */
     atexit(Seawolf_close);
 
+    MemPool_init();
     Notify_init(); /* Initialize Notify before Comm since Comm may otherwise
                       forward notification messages to it before it's ready for
                       them */
@@ -256,6 +258,7 @@ void Seawolf_close(void) {
     Comm_close();
     Notify_close();
     Util_close();
+    MemPool_close();
 }
 
 /**

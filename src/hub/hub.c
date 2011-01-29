@@ -113,6 +113,7 @@ static void Hub_close(void) {
         /* Util is part of the core libseawolf, does not require an _init() call,
            but *does* require a _close() call */
         Util_close();
+        MemPool_close();
     }
     closed = true;
     pthread_mutex_unlock(&hub_close_lock);
@@ -183,6 +184,9 @@ int main(int argc, char** argv) {
     Hub_Config_init();
     Hub_Var_init();
     Hub_Logging_init();
+    Hub_Net_init();
+
+    MemPool_init();
 
     /* Ensure shutdown during normal exit */
     atexit(Hub_close);
