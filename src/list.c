@@ -93,7 +93,7 @@ int List_append(List* list, void* v) {
  * \param n The index of the list to update
  */
 void List_set(List* list, void* v, int n) {
-    if(n < list->items) {
+    if(0 <= n && n < list->items) {
         list->base[n] = v;
     }
 }
@@ -108,7 +108,7 @@ void List_set(List* list, void* v, int n) {
  * \return The item at the given index or NULL if the index is out of bounds
  */
 void* List_get(List* list, int n) {
-    if(n < list->items) {
+    if(0 <= n && n < list->items) {
         return list->base[n];
     } else {
         return NULL;
