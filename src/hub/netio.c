@@ -152,4 +152,22 @@ void Hub_Net_broadcastMessage(Comm_Message* message) {
     }
 }
 
+void Hub_Net_broadcastNotification(Comm_Message* message) {
+    Comm_PackedMessage* packed_message = Comm_packMessage(message);
+    List* clients = Hub_Net_getConnectedClients();
+    int client_count = List_getSize(clients);
+    Hub_Client* client;
+
+    for(int i = 0; i < client_count; i++) {
+        client = List_get(clients, i);
+        if(client->state == CONNECTED && Hub_Client_checkFilters(client, message)) {
+            if(Hub_Net_sendPackedMessage(client, packed_message) < 0) {
+                /* Failed to send, shutdown client */
+                Hub_Logging_log(DEBUG, "Client disconnected, shutting down client");
+                Hub_Net_markClientClosed(client);
+            }
+        }
+    }
+}
+
 /** \} */

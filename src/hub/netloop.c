@@ -52,24 +52,15 @@ static pthread_mutex_t mainloop_done_lock = PTHREAD_MUTEX_INITIALIZER;
  * Hub_Net_markClientCloesd
  */
 static void Hub_Net_removeMarkedClosedClients(void) {
-    int index;
     Hub_Client* client;
 
     while((client = List_remove(closed_clients, 0)) != NULL) {
-        index = List_indexOf(clients, client);
+        List_remove(clients, List_indexOf(clients, client));
 
+        client->state = CLOSED;
+        Hub_Client_clearFilters(client);
         shutdown(client->sock, SHUT_RDWR);
         close(client->sock);
-        
-        List_remove(clients, index);
-        client->state = CLOSED;
-        
-        if(client->filters) {
-            for(int i = 0; i < client->filters_n; i++) {
-                free(client->filters[i]);
-            }
-            free(client->filters);
-        }
 
         free(client);
     }

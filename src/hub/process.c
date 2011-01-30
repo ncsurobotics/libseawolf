@@ -7,7 +7,7 @@
 #include "seawolf_hub.h"
 
 static int Hub_Process_comm(Hub_Client* client, Comm_Message* message);
-static int Hub_Process_notify(Comm_Message* message);
+static int Hub_Process_notify(Hub_Client* client, Comm_Message* message);
 static int Hub_Process_log(Comm_Message* message);
 static int Hub_Process_var(Hub_Client* client, Comm_Message* message);
 
@@ -76,20 +76,33 @@ static int Hub_Process_comm(Hub_Client* client, Comm_Message* message) {
  * \param response The response it stored here
  * \return Response action
  */
-static int Hub_Process_notify(Comm_Message* message) {
+static int Hub_Process_notify(Hub_Client* client, Comm_Message* message) {
+	static char* notify_0 = "NOTIFY";
+	static char* notify_1 = "IN";
+
     Comm_Message* notification;
 
-    if(message->count != 3 || strcmp(message->components[1], "OUT") != 0) {
-        return -1;
-    }
+    if(message->count == 3 && strcmp(message->components[1], "OUT") == 0) {
+    	notification = Comm_Message_new(3);
+    	notification->components[0] = notify_0;
+    	notification->components[1] = notify_1;
+		notification->components[2] = message->components[2];
+		Hub_Net_broadcastNotification(notification);
 
-    notification = Comm_Message_new(3);
-    notification->components[0] = MemPool_strdup(notification->alloc, "NOTIFY");
-    notification->components[1] = MemPool_strdup(notification->alloc, "IN");
-    notification->components[2] = MemPool_strdup(notification->alloc, message->components[2]);
-    Hub_Net_broadcastMessage(notification);
+		Comm_Message_destroy(notification);
 
-    Comm_Message_destroy(notification);
+	} else if(message->count == 4 && strcmp(message->components[1], "ADD_FILTER") == 0) {
+		Notify_FilterType type = (Notify_FilterType) atoi(message->components[2]);
+		const char* filter_body = message->components[3];
+		Hub_Client_addFilter(client, type, filter_body);
+
+
+	} else if(message->count == 2 && strcmp(message->components[1], "CLEAR_FILTERS") == 0) {
+		Hub_Client_clearFilters(client);
+
+	} else {
+		return -1;
+	}
 
     return 0;
 }
@@ -131,7 +144,7 @@ static int Hub_Process_var(Hub_Client* client, Comm_Message* message) {
         var = Hub_Var_get(message->components[2]);
 
         if(var == NULL) {
-            Hub_Logging_log(ERROR, Util_format("Get attempted on not-existant variable '%s'", message->components[2]));
+            Hub_Logging_log(ERROR, Util_format("Get attempted on not-existent variable '%s'", message->components[2]));
             Hub_Client_kick(client, Util_format("Invalid variable access (%s)", message->components[2]));
             return -1;
         } else {
@@ -155,7 +168,7 @@ static int Hub_Process_var(Hub_Client* client, Comm_Message* message) {
     } else if(message->count == 4 && strcmp(message->components[1], "SET") == 0) {
         n = Hub_Var_setValue(message->components[2], atof(message->components[3]));
         if(n == -1) {
-            Hub_Logging_log(ERROR, Util_format("Set attempted on not-existant variable '%s'", message->components[2]));
+            Hub_Logging_log(ERROR, Util_format("Set attempted on not-existent variable '%s'", message->components[2]));
         } else if(n == -2) {
             Hub_Logging_log(ERROR, Util_format("Set attempted on read-only variable '%s'", message->components[2]));
         } else {
@@ -187,7 +200,7 @@ int Hub_Process_process(Hub_Client* client, Comm_Message* message) {
         return Hub_Process_comm(client, message);
     } else if(client->state == CONNECTED) {
         if(strcmp(message->components[0], "NOTIFY") == 0) {
-            return Hub_Process_notify(message);
+            return Hub_Process_notify(client, message);
         } else if(strcmp(message->components[0], "VAR") == 0) {
             return Hub_Process_var(client, message);
         } else if(strcmp(message->components[0], "LOG") == 0) {

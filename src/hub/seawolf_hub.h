@@ -102,9 +102,13 @@ int Hub_Process_process(Hub_Client* client, Comm_Message* message);
 Comm_Message* Hub_Net_receiveMessage(Hub_Client* client);
 int Hub_Net_sendMessage(Hub_Client* client, Comm_Message* message);
 void Hub_Net_broadcastMessage(Comm_Message* message);
+void Hub_Net_broadcastNotification(Comm_Message* message);
 
 void Hub_Client_kick(Hub_Client* client, char* reason);
 void Hub_Client_close(Hub_Client* client);
+void Hub_Client_addFilter(Hub_Client* client, Notify_FilterType type, const char* filter);
+void Hub_Client_clearFilters(Hub_Client* client);
+bool Hub_Client_checkFilters(Hub_Client* client, Comm_Message* message);
 
 void Hub_Net_init(void);
 void Hub_Net_preClose(void);
