@@ -74,14 +74,14 @@ double PID_update(PID* pid, double pv) {
     double e = pid->sp - pv;
     double mv;
 
-    /* Update running error */
-    pid->e_dt += delta_t * e;
-
     /* Calculate output value */
     mv  = pid->p * e;
 
     /* Skip these if we are paused */
     if(pid->paused == false) {
+        /* Update running error */
+        pid->e_dt += delta_t * e;
+
         mv += pid->i * pid->e_dt;
         mv += pid->d * ((e - pid->e_last) / delta_t);
     }
