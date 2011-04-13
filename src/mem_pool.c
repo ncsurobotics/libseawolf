@@ -74,6 +74,11 @@
  */
 #define DESCRIPTOR_POOL_GROW 8
 
+/**
+ * Align all allocations on a byte boundary of this alignment
+ */
+#define ALLOC_ALIGNMENT 2
+
 static List* blocks = NULL;
 static MemPool_Alloc* descriptor_pool = NULL;
 static int descriptor_pool_size = 0;
@@ -309,6 +314,11 @@ void* MemPool_strdup(MemPool_Alloc* alloc, const char* s) {
  */
 void* MemPool_reserve(MemPool_Alloc* alloc, size_t size) {
 	void* p;
+
+        /* Round up to the nearest boundary to keep alignment if not already aligned */
+        if(size % ALLOC_ALIGNMENT > 0) {
+            size += (ALLOC_ALIGNMENT - (size % ALLOC_ALIGNMENT));
+        }
 
 	/* If there is space go ahead and write */
 	if (alloc->write_index + size < alloc->size) {
