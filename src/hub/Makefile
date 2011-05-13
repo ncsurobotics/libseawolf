@@ -3,7 +3,7 @@ include ../../build/config.base.mk
 include ../../$(CONFIG)
 
 CFLAGS += -I../../include/
-LDFLAGS += -L../ -l$(LIB_NAME:lib%.so=%)
+LDFLAGS += -L../ -l$(LIB_NAME:lib%.so=%) -lpthread
 
 INCLUDES= ../../include/seawolf/*.h ../../include/seawolf.h seawolf_hub.h
 
