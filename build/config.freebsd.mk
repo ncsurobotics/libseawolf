@@ -1,6 +1,6 @@
 
-# Build options for Linux
-CFLAGS += -D__SW_Linux__
+# Build options for FreeBSD
+CFLAGS += -D__SW_FreeBSD__
 
 # Install to /usr/local if no alternate is given
 PREFIX ?= /usr/local

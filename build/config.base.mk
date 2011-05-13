@@ -34,13 +34,13 @@ ifndef CONFIG
   ifeq ($(HOSTTYPE), Linux)
     CONFIG = build/config.linux.mk
   else ifeq ($(HOSTTYPE), FreeBSD)
-    CONFIG = build/config.linux.mk
+    CONFIG = build/config.freebsd.mk
   else ifeq ($(HOSTTYPE), OpenBSD)
     CONFIG = build/config.obsd.mk
   else ifeq ($(HOSTTYPE), NetBSD)
     CONFIG = build/config.netbsd.mk
   else
-    # Fall back to Linux
-    CONFIG = build/config.linux.mk
+    # Fall back to a generic set of options
+    CONFIG = build/config.generic.mk
   endif
 endif

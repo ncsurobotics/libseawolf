@@ -3,7 +3,7 @@
 
 # Disable warnings about character subscripts caused by NetBSD's toupper and
 # tolower macros in ctype.h
-CFLAGS += -Wno-char-subscripts
+CFLAGS += -Wno-char-subscripts -D__SW_NetBSD__
 
 # Install to /usr/local if no alternate is given
 PREFIX ?= /usr/local
