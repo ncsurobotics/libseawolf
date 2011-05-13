@@ -86,14 +86,48 @@ int main(void) {
 }
 \endcode
 
-For most applications this is all the boilerplate code that is
-neccessary. The first two lines in main() are responsible for loading a
-configuration file and initializing the library. The configuration file
-specifies the address and port of the hub server to connect to, the password
-to use when authenticating with the hub server, and options to control
-logging functionality. No other configuration is done is this file. The
-argument passed to Seawolf_init() specifies the name of the application. This
-name is primarily for logging purposes.
+For most applications this is all the boilerplate code that is neccessary. The
+first two lines in main() are responsible for loading a configuration file and
+initializing the library. The argument passed to Seawolf_init() specifies the
+name of the application. This name is primarily for logging purposes.
+
+\subsection appconfig Application Configuration File
+
+The configuration file specifies the address and port of the hub server to
+connect to, the password to use when authenticating with the hub server, and
+options to control logging functionality. No other configuration is done is this
+file. The general syntax of the configuration file is outlined in the \ref
+Config "configuration" module. The sample configuration below shows all valid
+options and their defaults.
+
+\code
+#
+# Example configuration file
+##
+
+# Address and port of hub
+comm_server = 127.0.0.1
+comm_port = 31427
+
+# Hub connection password
+comm_password = 
+
+# Debug level
+log_level = NORMAL
+
+# Duplicate log messages to standard output
+log_replicate_stdout = 1
+
+\endcode
+
+\subsection runningapp Running an Application
+
+No special steps are necessary to run an application, but take note of the
+search order for the configuration file. The SW_CONFIG environment variable can
+specify the location of a configuration file and will override a value given to
+Seawolf_loadConfig(). If SW_CONFIG is not set, the value passed to
+Seawolf_loadConfig() is used. If this is never called, then the default location
+of /etc/seawolf.conf is used.
 
 \section hubserver Hub Server
 
@@ -113,10 +147,9 @@ directory and, failing that, try /etc/seawolf_hub.conf. If no configuration
 file can be found the the hub print a warning and falls back to its default
 internal configuration.
 
-The syntax of the configuration file is the same as other libseawolf
-configuration files and is outlined in the \ref Config "configuration"
-module. Below is an example configuration file listing all valid options with
-their default values.
+The syntax of the configuration file is outlined in the \ref Config
+"configuration" module. Below is an example configuration file listing all valid
+options with their default values.
 
 \code
 #
