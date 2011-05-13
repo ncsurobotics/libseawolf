@@ -216,6 +216,26 @@ void Serial_setBaud(SerialPort sp, int baud) {
     case 38400:
         real_baud = B38400;
         break;
+
+#if defined(__SW_FreeBSD__)
+    /* Linux doesn't support these in any reasonable manner */
+    case 7200:
+        real_baud = B7200;
+        break;
+    case 14400:
+        real_baud = B14400;
+        break;
+#endif
+
+#if defined(__SW_Linux__) || defined(__SW_FreeBSD__)
+    case 57600:
+        real_baud = B57600;
+        break;
+    case 155200:
+        real_baud = B115200;
+        break;
+#endif
+
     default:
         Logging_log(ERROR, __Util_format("Invalid baud rate %d", baud));
         return;
