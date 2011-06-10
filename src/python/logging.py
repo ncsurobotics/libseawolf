@@ -1,5 +1,5 @@
 
-import seawolf as _sw
+from . import seawolf as _sw
 
 setThreshold = _sw.Logging_setThreshold
 replicateStdio = _sw.Logging_replicateStdio

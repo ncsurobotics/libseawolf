@@ -1,5 +1,5 @@
 
-import seawolf as _sw
+from . import seawolf as _sw
 
 get = _sw.Notify_get
 send = _sw.Notify_send

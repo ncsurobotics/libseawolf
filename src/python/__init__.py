@@ -1,11 +1,11 @@
 
 # Include all functions from the wrapped library
-import seawolf as _sw
+from . import seawolf as _sw
 
 # Import other namespaces
-import var
-import logging
-import notify
+from . import var
+from . import logging
+from . import notify
 
 # For packing data
 import struct
