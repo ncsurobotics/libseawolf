@@ -572,7 +572,6 @@ void Comm_Message_destroy(Comm_Message* message) {
  */
 void Comm_close(void) {
     Comm_Message* message;
-    Comm_Message* response;
 
     /* This check is necessary if an error condition is reached in Comm_init */
     if(initialized) {
@@ -582,8 +581,7 @@ void Comm_close(void) {
             message->components[1] = MemPool_strdup(message->alloc, "SHUTDOWN");
             Comm_assignRequestID(message);
 
-            response = Comm_sendMessage(message);
-
+            Comm_sendMessage(message);
             MemPool_free(message->alloc);
         }
 
