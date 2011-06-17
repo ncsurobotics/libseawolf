@@ -194,7 +194,7 @@ pid_t Task_spawnApplication(char* path, char* args, ...) {
     va_end(ap);
 
     /* Run program */
-    pid = fork();
+    pid = vfork();
     if(pid == 0) {
         /* Replace current process with the given application */
         execv(path, argv);
