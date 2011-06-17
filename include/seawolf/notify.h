@@ -56,6 +56,7 @@ void Notify_get(char* action, char* param);
 char** Notify_getWithAlloc(void);
 void Notify_freeNotification(char** notification);
 void Notify_send(char* action, char* param);
+int Notify_available(void);
 
 /* Filter messages, NULL filter to clear filters */
 void Notify_filter(Notify_FilterType filter_type, char* filter);

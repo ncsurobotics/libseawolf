@@ -147,6 +147,17 @@ void Notify_send(char* action, char* param) {
 }
 
 /**
+ * \brief Get number of available notifications
+ *
+ * Returns the number of notifications waiting in the queue
+ *
+ * \return Number of waiting notifications
+ */
+int Notify_available(void) {
+    return Queue_getSize(notification_queue);
+}
+
+/**
  * \brief Register a new filter
  *
  * Register a new filter with the notification system. Incoming messages must
