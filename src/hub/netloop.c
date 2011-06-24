@@ -49,12 +49,18 @@ static bool mainloop_running = false;
 static pthread_cond_t mainloop_done = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t mainloop_done_lock = PTHREAD_MUTEX_INITIALIZER;
 
-/** Task handle of thread that destroys clients */
-static Task_Handle close_clients_thread;
-
 /** Mutext attribute for a recursive mutex */
 pthread_mutexattr_t recursive_mutex;
 
+#ifdef USE_THREADS
+/** Task handle of thread that destroys clients */
+static Task_Handle close_clients_thread;
+
+/** Since clients are closed in a dedicated thread, the Queue_pop calls should block */
+bool blocking_close_clients = true;
+#else
+bool blocking_close_clients = false;
+#endif
 
 /**
  * \defgroup netloop Net loop
@@ -71,15 +77,9 @@ pthread_mutexattr_t recursive_mutex;
 static int Hub_Net_removeMarkedClosedClients(void) {
     Hub_Client* client;
 
-    while(true) {
-        client = Queue_pop(closed_clients, true);
-
-        /* NULL pushed to the queue after all clients have been disconnected
-           during shutdown */
-        if(client == NULL) {
-            break;
-        }
-
+    /* NULL pushed to the queue after all clients have been disconnected
+       during shutdown */
+    while((client = Queue_pop(closed_clients, blocking_close_clients)) != NULL) {
         Hub_Net_acquireGlobalClientsLock();
         List_remove(clients, List_indexOf(clients, client));
         Hub_Net_releaseGlobalClientsLock();
@@ -131,6 +131,7 @@ void Hub_Net_init(void) {
     pthread_mutexattr_settype(&recursive_mutex, PTHREAD_MUTEX_RECURSIVE);
 }
 
+#ifdef USE_THREADS
 /**
  * \brief Wait for all client threads to die
  *
@@ -139,6 +140,7 @@ void Hub_Net_init(void) {
 static void Hub_Net_joinClientThreads(void) {
     Task_wait(close_clients_thread);
 }
+#endif
 
 /**
  * \brief Initialize the sever socket
@@ -385,8 +387,10 @@ void Hub_Net_mainLoop(void) {
     /* Main loop is now running */
     mainloop_running = true;
 
+#ifdef USE_THREADS
     /* Spawn thread to remove clients after they are marked closed */
     close_clients_thread = Task_background(Hub_Net_removeMarkedClosedClients);
+#endif
 
     /* Start sending/recieving messages */
     while(run_mainloop) {
@@ -470,6 +474,8 @@ void Hub_Net_mainLoop(void) {
                 Comm_Message_destroy(client_message);
             }
         }
+
+        Hub_Net_removeMarkedClosedClients();
 #endif
     }
 
@@ -484,7 +490,11 @@ void Hub_Net_mainLoop(void) {
     Queue_append(closed_clients, NULL);
 
     /* Wait for all client threads to complete */
+#ifdef USE_THREADS
     Hub_Net_joinClientThreads();
+#else
+    Hub_Net_removeMarkedClosedClients();
+#endif
 
     pthread_mutexattr_destroy(&recursive_mutex);
 
