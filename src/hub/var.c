@@ -263,6 +263,8 @@ static void Hub_Var_readDefinitions(void) {
         new_var->value = default_value;
         new_var->persistent = persistent;
         new_var->readonly = readonly;
+        
+        pthread_rwlock_init(&new_var->lock, NULL);
 
         /* Save variable to cache */
         Dictionary_set(var_cache, var_name, new_var);
@@ -323,15 +325,19 @@ int Hub_Var_setValue(const char* name, double value) {
     if(var == NULL) {
         return -1;
     }
-
+    
     if(var->readonly) {
         return -2;
     }
+
+    pthread_rwlock_wrlock(&var->lock);
 
     var->value = value;
     if(var->persistent) {
         Hub_Var_flushPersistent();
     }
+
+    pthread_rwlock_unlock(&var->lock);
 
     return 0;
 }

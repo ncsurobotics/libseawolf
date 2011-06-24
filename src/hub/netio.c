@@ -72,9 +72,11 @@ Comm_Message* Hub_Net_receiveMessage(Hub_Client* client) {
     return message;
 
  receive_error:
-    Hub_Logging_log(ERROR, "Error receiving data (lost connection to client). Closing connection");
+    if(client->state != CLOSED) {
+        Hub_Logging_log(ERROR, "Error receiving data (lost connection to client). Closing connection");
+        Hub_Net_markClientClosed(client);
+    }
     MemPool_free(packed_message->alloc);
-    Hub_Net_markClientClosed(client);
 
     return NULL;
 }
@@ -92,6 +94,8 @@ static int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* pac
     struct pollfd fd = {.fd = client->sock, .events = POLLOUT};
     int n = -1;
 
+    pthread_mutex_lock(&client->lock);
+
     /* Check if data can be sent without blocking */
     poll(&fd, 1, 0);
     if(fd.revents & POLLOUT) {
@@ -100,9 +104,9 @@ static int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* pac
     } else {
         /* Socket not ready to accept data */
         Hub_Logging_log(ERROR, "Unable to write data to full network socket");
-        return -1;
     }
 
+    pthread_mutex_unlock(&client->lock);
     return n;
 }
 
@@ -137,9 +141,11 @@ int Hub_Net_sendMessage(Hub_Client* client, Comm_Message* message) {
 void Hub_Net_broadcastMessage(Comm_Message* message) {
     Comm_PackedMessage* packed_message = Comm_packMessage(message);
     List* clients = Hub_Net_getConnectedClients();
-    int client_count = List_getSize(clients);
+    int client_count;
     Hub_Client* client;
-
+    
+    Hub_Net_acquireGlobalClientsLock();
+    client_count = List_getSize(clients);
     for(int i = 0; i < client_count; i++) {
         client = List_get(clients, i);
         if(client->state == CONNECTED) {
@@ -150,24 +156,54 @@ void Hub_Net_broadcastMessage(Comm_Message* message) {
             }
         }
     }
+    Hub_Net_releaseGlobalClientsLock();
 }
 
+/**
+ * \brief Send out a notification
+ *
+ * Send out a notification to all connected clients that have filters matching
+ * the notification to be sent
+ *
+ * \param message Notification to broadcast
+ */
 void Hub_Net_broadcastNotification(Comm_Message* message) {
     Comm_PackedMessage* packed_message = Comm_packMessage(message);
     List* clients = Hub_Net_getConnectedClients();
-    int client_count = List_getSize(clients);
+    int client_count;
+    List* send_to = List_new();
     Hub_Client* client;
 
+    Hub_Net_acquireGlobalClientsLock();
+    client_count = List_getSize(clients);
     for(int i = 0; i < client_count; i++) {
         client = List_get(clients, i);
-        if(client->state == CONNECTED && Hub_Client_checkFilters(client, message)) {
-            if(Hub_Net_sendPackedMessage(client, packed_message) < 0) {
-                /* Failed to send, shutdown client */
-                Hub_Logging_log(DEBUG, "Client disconnected, shutting down client");
-                Hub_Net_markClientClosed(client);
+
+        /* Try to avoid locking an unconnected client */
+        if(client->state == CONNECTED) {
+            pthread_rwlock_rdlock(&client->in_use);
+
+            if(Hub_Client_checkFilters(client, message)) {
+                List_append(send_to, client);
+            } else {
+                pthread_rwlock_unlock(&client->in_use);
             }
         }
     }
+    Hub_Net_releaseGlobalClientsLock();
+
+    client_count = List_getSize(send_to);
+    for(int i = 0; i < client_count; i++) {
+        client = List_get(send_to, i);
+        if(Hub_Net_sendPackedMessage(client, packed_message) < 0) {
+            /* Failed to send, shutdown client */
+            Hub_Logging_log(DEBUG, "Client disconnected, shutting down client");
+            Hub_Net_markClientClosed(client);
+        }
+        pthread_rwlock_unlock(&client->in_use);
+    }
+
+    List_destroy(send_to);
 }
 
 /** \} */

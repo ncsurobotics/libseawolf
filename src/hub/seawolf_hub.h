@@ -62,6 +62,26 @@ typedef struct {
      * Number of filters
      */
     int filters_n;
+
+    /**
+     * Filter lock 
+     */
+    pthread_mutex_t filter_lock;
+
+    /**
+     * Send/modify lock
+     */
+    pthread_mutex_t lock;
+
+    /**
+     * In use lock (synchronizes memory freeing during client closing)
+     */
+    pthread_rwlock_t in_use;
+
+    /**
+     * Task which runs the client thread
+     */ 
+    pthread_t thread;
 } Hub_Client;
 
 /**
@@ -92,6 +112,11 @@ typedef struct {
      * Readonly variable flag
      */
     bool readonly;
+
+    /**
+     * Variable read/write lock
+     */
+    pthread_rwlock_t lock;
 } Hub_Var;
 
 void Hub_exit(void);
@@ -99,6 +124,8 @@ void Hub_exitError(void);
 bool Hub_fileExists(const char* file);
 int Hub_Process_process(Hub_Client* client, Comm_Message* message);
 
+void Hub_Net_acquireGlobalClientsLock(void);
+void Hub_Net_releaseGlobalClientsLock(void);
 Comm_Message* Hub_Net_receiveMessage(Hub_Client* client);
 int Hub_Net_sendMessage(Hub_Client* client, Comm_Message* message);
 void Hub_Net_broadcastMessage(Comm_Message* message);

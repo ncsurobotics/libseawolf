@@ -70,18 +70,22 @@
 #define BLOCK_SIZE 4096
 
 /**
- * Add 8 new descriptors instead of just 1 when out
+ * Allocate 16 descriptors at a time
  */
-#define DESCRIPTOR_POOL_GROW 8
+#define DESCRIPTOR_POOL_GROW 16
 
 /**
  * Align all allocations on a byte boundary of this alignment
  */
 #define ALLOC_ALIGNMENT 2
 
+/**
+ * Value of mem when full
+ */
+#define FULL_MAP (1 << (BLOCK_SIZE / DEFAULT_ALLOCATION)) - 1
+
 static List* blocks = NULL;
-static MemPool_Alloc* descriptor_pool = NULL;
-static int descriptor_pool_size = 0;
+static List* descriptor_pool = NULL;
 static MemPool_Alloc* free_descriptors = NULL;
 
 static pthread_mutex_t pool_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -98,8 +102,8 @@ static void MemPool_releaseChunk(MemPool_Alloc* alloc);
  * Initialize the MemPool component
  */
 void MemPool_init(void) {
-	descriptor_pool = malloc(sizeof(MemPool_Alloc) * descriptor_pool_size);
-	blocks = List_new();
+    descriptor_pool = List_new();
+    blocks = List_new();
 }
 
 /**
@@ -108,54 +112,62 @@ void MemPool_init(void) {
  * Close the MemPool component
  */
 void MemPool_close(void) {
-	MemPool_Block* block;
-	while ((block = List_remove(blocks, 0)) != NULL) {
-		free(block->base);
-		free(block);
-	}
-	List_destroy(blocks);
-	free(descriptor_pool);
+    MemPool_Alloc* descriptor_group;
+    MemPool_Block* block;
+
+    while ((block = List_remove(blocks, 0)) != NULL) {
+        free(block->base);
+        free(block);
+    }
+    List_destroy(blocks);
+
+    while((descriptor_group = List_remove(descriptor_pool, 0)) != NULL) {
+        free(descriptor_group);
+    }
+    List_destroy(descriptor_pool);
 }
 
 /**
  * Initialize a new MemPool_Block and store it into the blocks list
  */
 static MemPool_Block* MemPool_allocNewBlock(void) {
-	MemPool_Block* new_block = malloc(sizeof(MemPool_Block));
-	new_block->base = malloc(BLOCK_SIZE);
-	new_block->index = List_getSize(blocks);
-	new_block->alloc_map = 0;
-	new_block->full = false;
-	pthread_mutex_init(&new_block->lock, NULL);
+    MemPool_Block* new_block = malloc(sizeof(MemPool_Block));
+    new_block->base = malloc(BLOCK_SIZE);
+    new_block->index = List_getSize(blocks);
+    new_block->alloc_map = 0;
+    new_block->full = false;
+    pthread_mutex_init(&new_block->lock, NULL);
+    pthread_mutex_lock(&new_block->lock);
+    List_append(blocks, new_block);
 
-	List_append(blocks, new_block);
-
-	return new_block;
+    return new_block;
 }
 
 /**
  * Gets a block that has room for an allocation and returns it in a locked state
  */
 static MemPool_Block* MemPool_getBlockForAlloc(void) {
-	MemPool_Block* block = NULL;
+    MemPool_Block* block = NULL;
+    int num_blocks, i;
 
-	pthread_mutex_lock(&pool_lock);
-	for (int i = 0; i < List_getSize(blocks); i++) {
-		block = List_get(blocks, i);
-		if (block->full == false) {
-			block = List_get(blocks, i);
-			break;
-		}
-	}
+    pthread_mutex_lock(&pool_lock);
+    num_blocks = List_getSize(blocks);
+    for (i = 0; i < num_blocks; i++) {
+        block = List_get(blocks, i);
 
-	if (block == NULL) {
-		block = MemPool_allocNewBlock();
-	}
-	pthread_mutex_lock(&block->lock);
+        pthread_mutex_lock(&block->lock);
+        if (block->full == false) {
+            goto release_pool_lock;
+        }
 
-	pthread_mutex_unlock(&pool_lock);
+        pthread_mutex_unlock(&block->lock);
+    }
 
-	return block;
+    block = MemPool_allocNewBlock();
+
+ release_pool_lock:
+    pthread_mutex_unlock(&pool_lock);
+    return block;
 }
 
 /**
@@ -163,49 +175,45 @@ static MemPool_Block* MemPool_getBlockForAlloc(void) {
  * descriptors linked list
  */
 static void MemPool_setDescriptorFree(MemPool_Alloc* descriptor) {
-	descriptor->next_free = free_descriptors;
-	free_descriptors = descriptor;
+    descriptor->next_free = free_descriptors;
+    free_descriptors = descriptor;
 }
 
 /**
  * Free an allocation (chunk) in a block so that it can be reallocated
  */
 static void MemPool_releaseChunk(MemPool_Alloc* alloc) {
-	MemPool_Block* block = List_get(blocks, alloc->block_index);
+    MemPool_Block* block = List_get(blocks, alloc->block_index);
 
-	pthread_mutex_lock(&block->lock);
-	int chunk_index = (((uint8_t*) alloc->base) - ((uint8_t*) block->base))
-			/ DEFAULT_ALLOCATION;
-	block->alloc_map &= ~(1 << chunk_index);
-	block->full = false;
-	pthread_mutex_unlock(&block->lock);
+    pthread_mutex_lock(&block->lock);
+    int chunk_index = (((uint8_t*) alloc->base) - ((uint8_t*) block->base)) / DEFAULT_ALLOCATION;
+    block->alloc_map &= ~(1 << chunk_index);
+    block->full = false;
+    pthread_mutex_unlock(&block->lock);
 }
 
 /**
  * Get a descriptor for a memory allocation
  */
 static MemPool_Alloc* MemPool_getDescriptor(void) {
-	MemPool_Alloc* descriptor = NULL;
+    MemPool_Alloc* descriptors = NULL;
 
-	pthread_mutex_lock(&pool_lock);
-	/* Allocate new free allocation descriptors */
-	if (free_descriptors == NULL) {
-		int new_size = descriptor_pool_size + DESCRIPTOR_POOL_GROW;
-		descriptor_pool = realloc(descriptor_pool, sizeof(MemPool_Alloc)
-				* new_size);
+    pthread_mutex_lock(&pool_lock);
+    /* Allocate new free allocation descriptors */
+    if (free_descriptors == NULL) {
+        descriptors = malloc(sizeof(MemPool_Alloc) * DESCRIPTOR_POOL_GROW);
+        List_append(descriptor_pool, descriptors);
 
-		for (int i = descriptor_pool_size; i < new_size; i++) {
-			MemPool_setDescriptorFree(&descriptor_pool[i]);
-		}
+        for (int i = 0; i < DESCRIPTOR_POOL_GROW; i++) {
+            MemPool_setDescriptorFree(descriptors + i);
+        }
+    }
 
-		descriptor_pool_size = new_size;
-	}
+    descriptors = free_descriptors;
+    free_descriptors = descriptors->next_free;
+    pthread_mutex_unlock(&pool_lock);
 
-	descriptor = free_descriptors;
-	free_descriptors = descriptor->next_free;
-	pthread_mutex_unlock(&pool_lock);
-
-	return descriptor;
+    return descriptors;
 }
 
 /**
@@ -218,36 +226,38 @@ static MemPool_Alloc* MemPool_getDescriptor(void) {
  * \return The new allocation object
  */
 MemPool_Alloc* MemPool_alloc(void) {
-	MemPool_Block* block = MemPool_getBlockForAlloc();
-	uint32_t m;
-	int i;
+    MemPool_Block* block = MemPool_getBlockForAlloc();
+    uint32_t m;
+    int i;
 
-	/* Find free chunk */
-	for (i = 0; i < sizeof(block->alloc_map) * 8; i++) {
-		m = (1 << i);
-		if ((block->alloc_map & m) == 0) {
-			break;
-		}
-	}
+    /* Find free chunk */
+    for (i = 0; i < (BLOCK_SIZE / DEFAULT_ALLOCATION); i++) {
+        m = (1 << i);
+        if ((block->alloc_map & m) == 0) {
+            break;
+        }
+    }
 
-	/* Allocating the last chunk; block is full */
-	if ((m << 1) == 0) {
-		block->full = true;
-	}
+    /* Mark block as allocated */
+    block->alloc_map |= m;
 
-	/* Mark block as allocated and release lock */
-	block->alloc_map |= m;
-	pthread_mutex_unlock(&block->lock);
+    /* Allocating the last chunk; block is full */
+    if (block->alloc_map == FULL_MAP) {
+        block->full = true;
+    }
 
-	MemPool_Alloc* alloc = MemPool_getDescriptor();
+    /* Release lock */
+    pthread_mutex_unlock(&block->lock);
 
-	alloc->base = ((uint8_t*) block->base) + (i * DEFAULT_ALLOCATION);
-	alloc->write_index = 0;
-	alloc->size = DEFAULT_ALLOCATION;
-	alloc->block_index = block->index;
-	alloc->external = false;
+    MemPool_Alloc* alloc = MemPool_getDescriptor();
 
-	return alloc;
+    alloc->base = ((uint8_t*) block->base) + (i * DEFAULT_ALLOCATION);
+    alloc->write_index = 0;
+    alloc->size = DEFAULT_ALLOCATION;
+    alloc->block_index = block->index;
+    alloc->external = false;
+
+    return alloc;
 }
 
 /**
@@ -258,15 +268,15 @@ MemPool_Alloc* MemPool_alloc(void) {
  * \param alloc The allocation to free
  */
 void MemPool_free(MemPool_Alloc* alloc) {
-	if (alloc->external) {
-		free(alloc->base);
-	} else {
-		MemPool_releaseChunk(alloc);
-	}
+    if (alloc->external) {
+        free(alloc->base);
+    } else {
+        MemPool_releaseChunk(alloc);
+    }
 
-	pthread_mutex_lock(&pool_lock);
-	MemPool_setDescriptorFree(alloc);
-	pthread_mutex_unlock(&pool_lock);
+    pthread_mutex_lock(&pool_lock);
+    MemPool_setDescriptorFree(alloc);
+    pthread_mutex_unlock(&pool_lock);
 }
 
 /**
@@ -281,10 +291,10 @@ void MemPool_free(MemPool_Alloc* alloc) {
  * \return A pointer to the beginning of the copied data
  */
 void* MemPool_write(MemPool_Alloc* alloc, const void* data, size_t size) {
-	void* p = MemPool_reserve(alloc, size);
-	memcpy(p, data, size);
+    void* p = MemPool_reserve(alloc, size);
+    memcpy(p, data, size);
 
-	return p;
+    return p;
 }
 
 /**
@@ -298,7 +308,7 @@ void* MemPool_write(MemPool_Alloc* alloc, const void* data, size_t size) {
  * \return A pointer to the copy
  */
 void* MemPool_strdup(MemPool_Alloc* alloc, const char* s) {
-	return MemPool_write(alloc, s, strlen(s) + 1);
+    return MemPool_write(alloc, s, strlen(s) + 1);
 }
 
 /**
@@ -313,34 +323,34 @@ void* MemPool_strdup(MemPool_Alloc* alloc, const char* s) {
  * \return A pointer to the reserved space
  */
 void* MemPool_reserve(MemPool_Alloc* alloc, size_t size) {
-	void* p;
+    void* p;
 
-        /* Round up to the nearest boundary to keep alignment if not already aligned */
-        if(size % ALLOC_ALIGNMENT > 0) {
-            size += (ALLOC_ALIGNMENT - (size % ALLOC_ALIGNMENT));
-        }
+    /* Round up to the nearest boundary to keep alignment if not already aligned */
+    if(size % ALLOC_ALIGNMENT > 0) {
+        size += (ALLOC_ALIGNMENT - (size % ALLOC_ALIGNMENT));
+    }
 
-	/* If there is space go ahead and write */
-	if (alloc->write_index + size < alloc->size) {
-		/* No more space needed */
-	} else if (alloc->external) {
-		alloc->base = realloc(alloc->base, alloc->write_index + size);
+    /* If there is space go ahead and write */
+    if (alloc->write_index + size < alloc->size) {
+        /* No more space needed */
+    } else if (alloc->external) {
+        alloc->base = realloc(alloc->base, alloc->write_index + size);
 
-		/* No space but this is an internal allocation so we turn it into an
-		 external one */
-	} else {
-		void* temp = malloc(alloc->write_index + size);
-		memcpy(temp, alloc->base, alloc->write_index);
+        /* No space but this is an internal allocation so we turn it into an
+           external one */
+    } else {
+        void* temp = malloc(alloc->write_index + size);
+        memcpy(temp, alloc->base, alloc->write_index);
 
-		MemPool_releaseChunk(alloc);
-		alloc->base = temp;
-		alloc->external = true;
-	}
+        MemPool_releaseChunk(alloc);
+        alloc->base = temp;
+        alloc->external = true;
+    }
 
-	p = ((uint8_t*) alloc->base) + alloc->write_index;
-	alloc->write_index += size;
+    p = ((uint8_t*) alloc->base) + alloc->write_index;
+    alloc->write_index += size;
 
-	return p;
+    return p;
 }
 
 /** \} */

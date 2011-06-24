@@ -31,6 +31,8 @@ static short min_log_level = DEBUG;
 /** Whether to replicate log messages to standard output */
 static bool replicate_stdout = false;
 
+static pthread_mutex_t logging_write_lock = PTHREAD_MUTEX_INITIALIZER;
+
 /**
  * \defgroup Log Logging
  * \brief Logging routines for the hub and for the centralized logging
@@ -108,6 +110,7 @@ void Hub_Logging_logWithName(char* app_name, short log_level, char* msg) {
     time(&t);
     strftime(time_buffer, TIME_BUFFER_SIZE, "%H:%M:%S", localtime(&t));
 
+    pthread_mutex_lock(&logging_write_lock);
     if(!initialized || (replicate_stdout && log_file_fd != STDOUT_FILENO)) {
         printf("[%s][%s][%s] %s\n", time_buffer, app_name, Logging_getLevelName(log_level), msg);
     }
@@ -116,6 +119,7 @@ void Hub_Logging_logWithName(char* app_name, short log_level, char* msg) {
         fprintf(log_file, "[%s][%s][%s] %s\n", time_buffer, app_name, Logging_getLevelName(log_level), msg);
         fflush(log_file);
     }
+    pthread_mutex_unlock(&logging_write_lock);
 }
 
 /**

@@ -16,12 +16,22 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-static void Hub_Net_removeMarkedClosedClients(void);
+/* If left uncommnented the hub will handle clients with threads. Otherwise
+   clients requests will be processed by a single thread and select will be used
+   to select clients ready for data transfer */
+#define USE_THREADS
+
+static int Hub_Net_removeMarkedClosedClients(void);
 static void Hub_Net_initServerSocket(void);
 
 /* List of active clients */
 static List* clients = NULL;
-static List* closed_clients = NULL;
+static Queue* closed_clients = NULL;
+
+/* Global clients lock */
+static pthread_mutex_t global_clients_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static pthread_mutex_t remove_client_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /** Server socket */
 static int svr_sock = -1;
@@ -39,6 +49,13 @@ static bool mainloop_running = false;
 static pthread_cond_t mainloop_done = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t mainloop_done_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/** Task handle of thread that destroys clients */
+static Task_Handle close_clients_thread;
+
+/** Mutext attribute for a recursive mutex */
+pthread_mutexattr_t recursive_mutex;
+
+
 /**
  * \defgroup netloop Net loop
  * \brief Main hub request loop and support routines
@@ -51,19 +68,41 @@ static pthread_mutex_t mainloop_done_lock = PTHREAD_MUTEX_INITIALIZER;
  * Remove clients that have been marked closed with a call to
  * Hub_Net_markClientCloesd
  */
-static void Hub_Net_removeMarkedClosedClients(void) {
+static int Hub_Net_removeMarkedClosedClients(void) {
     Hub_Client* client;
 
-    while((client = List_remove(closed_clients, 0)) != NULL) {
-        List_remove(clients, List_indexOf(clients, client));
+    while(true) {
+        client = Queue_pop(closed_clients, true);
 
-        client->state = CLOSED;
+        /* NULL pushed to the queue after all clients have been disconnected
+           during shutdown */
+        if(client == NULL) {
+            break;
+        }
+
+        Hub_Net_acquireGlobalClientsLock();
+        List_remove(clients, List_indexOf(clients, client));
+        Hub_Net_releaseGlobalClientsLock();
+        
+#ifdef USE_THREADS
+        /* No threads can discover the client since it is no longer in the
+           client list. Simply wait for any threads to finish using it that may
+           be currently */
+        pthread_rwlock_wrlock(&client->in_use);
+
+        /* Wait for the client to exit */
+        pthread_join(client->thread, NULL);
+#endif
+
+        /* Free the client's resources */
         Hub_Client_clearFilters(client);
         shutdown(client->sock, SHUT_RDWR);
         close(client->sock);
 
         free(client);
     }
+
+    return 0;
 }
 
 /**
@@ -75,13 +114,30 @@ static void Hub_Net_removeMarkedClosedClients(void) {
  * \param client Mark the given client as closed
  */
 void Hub_Net_markClientClosed(Hub_Client* client) {
-    client->state = CLOSED;
-    List_append(closed_clients, client);
+    pthread_mutex_lock(&remove_client_lock);
+    if(client->state != CLOSED) {
+        client->state = CLOSED;
+        Queue_append(closed_clients, client);
+    }
+    pthread_mutex_unlock(&remove_client_lock);
 }
 
 void Hub_Net_init(void) {
     clients = List_new();
-    closed_clients = List_new();
+    closed_clients = Queue_new();
+
+    /* Initialize attributes for client send locks */
+    pthread_mutexattr_init(&recursive_mutex);
+    pthread_mutexattr_settype(&recursive_mutex, PTHREAD_MUTEX_RECURSIVE);
+}
+
+/**
+ * \brief Wait for all client threads to die
+ *
+ * Wait for all client threads to shutdown and be destroyed
+ */
+static void Hub_Net_joinClientThreads(void) {
+    Task_wait(close_clients_thread);
 }
 
 /**
@@ -144,8 +200,6 @@ void Hub_Net_preClose(void) {
  * memory and properly shutdown all associated sockets
  */
 void Hub_Net_close(void) {
-    int tmp_sock;
-
     /* Synchronize exit with mainLoop */
     pthread_mutex_lock(&mainloop_done_lock);
 
@@ -153,22 +207,26 @@ void Hub_Net_close(void) {
         /* Instruct mainLoop to terminate */
         Hub_Net_preClose();
 
+#ifndef USE_THREADS
         /* Attempt to connect a socket to the address of the server socket which
            should cause the blocking select call to wake up */
-        tmp_sock = socket(AF_INET, SOCK_STREAM, 0);
+        int tmp_sock = socket(AF_INET, SOCK_STREAM, 0);
         if(connect(tmp_sock, (struct sockaddr*) &svr_addr, sizeof(svr_addr))) {
             Hub_Logging_log(ERROR, "Unable to complete graceful shutdown!");
             Hub_exitError();
         }
+#endif
         
         /* Now wait for Hub_mainLoop to terminate */
         while(mainloop_running) {
             pthread_cond_wait(&mainloop_done, &mainloop_done_lock);
         }
 
+#ifndef USE_THREADS
         /* Close the temporary socket */
         shutdown(tmp_sock, SHUT_RDWR);
         close(tmp_sock);
+#endif
     }
 
     pthread_mutex_unlock(&mainloop_done_lock);
@@ -176,12 +234,124 @@ void Hub_Net_close(void) {
     if(clients) {
         /* Free the clients lists */
         List_destroy(clients);
-        List_destroy(closed_clients);
+        Queue_destroy(closed_clients);
     }
 }
 
+/**
+ * \brief Get connected clients
+ *
+ * Get a list of connected clients. Access to the list should be proteced by
+ * calls to Hub_Net_acquireGlobalClientsLock and
+ * Hub_Net_releaseGlobalClientsLock
+ */
 List* Hub_Net_getConnectedClients(void) {
     return clients;
+}
+
+/**
+ * \brief Acquire the clients list lock
+ *
+ * Acquire a global lock on the clients list. This lock should only be held for
+ * a short amount of time if necessary.
+ */
+void Hub_Net_acquireGlobalClientsLock(void) {
+    pthread_mutex_lock(&global_clients_lock);
+}
+
+/**
+ * \brief Release the clients list lock
+ *
+ * Release the global lock on the clients list. This lock should only be held
+ * for a short amount of time if necessary.
+ */
+void Hub_Net_releaseGlobalClientsLock(void) {
+    pthread_mutex_unlock(&global_clients_lock);
+}
+
+#ifdef USE_THREADS
+/**
+ * \brief Client connection thread
+ *
+ * Handle requests from a single client until the client closes
+ *
+ * \param _client Pointer to a Hub_Client structure
+ * \return Always returns NULL
+ */
+static void* Hub_Net_clientThread(void* _client) {
+    Hub_Client* client = (Hub_Client*) _client;
+    Comm_Message* client_message;
+ 
+    while(client->state != CLOSED) {
+        /* Read message from the client  */
+        client_message = Hub_Net_receiveMessage(client);
+
+        if(client_message == NULL) {
+            Hub_Net_markClientClosed(client);
+            break;
+        }
+
+        /* Process message */
+        Hub_Process_process(client, client_message);
+
+        /* Destroy client message */
+        Comm_Message_destroy(client_message);
+    }
+
+    return NULL;
+}
+#endif // #ifdef USE_THREADS
+
+/**
+ * \brief Attempt to accept a new client connection
+ *
+ * Attempt to accept a new client connection
+ *
+ * \param client_new New client socket
+ */
+static void Hub_Net_acceptClient(int client_new) {
+#ifndef USE_THREADS
+    /* Used to set the SO_RCVTIMEO (receive timeout) socket option on client
+       sockets. 250 milliseconds */
+    const struct timeval client_timeout = {.tv_sec = 0, .tv_usec = 250 * 1000};
+#endif
+
+    Hub_Client* client;
+
+    if(List_getSize(clients) >= MAX_CLIENTS) {
+        Hub_Logging_log(ERROR, Util_format("Unable to accept new client connection! Maximum clients (%d) exceeded", MAX_CLIENTS));
+        shutdown(client_new, SHUT_RDWR);
+        close(client_new);
+        return;
+    }
+
+    Hub_Logging_log(DEBUG, "Accepted new client connection");
+
+    /* Set a timeout on receive operations to keep broken client
+       connections from deadlocking the hub */
+#ifndef USE_THREADS
+    setsockopt(client_new, SOL_SOCKET, SO_RCVTIMEO, &client_timeout, sizeof(client_timeout));
+#endif
+
+    client = malloc(sizeof(Hub_Client));
+    client->sock = client_new;
+    client->state = UNAUTHENTICATED;
+    client->name = NULL;
+    client->filters = NULL;
+    client->filters_n = 0;
+
+    pthread_mutex_init(&client->filter_lock, NULL);
+    pthread_rwlock_init(&client->in_use, NULL);
+    pthread_mutex_init(&client->lock, &recursive_mutex);
+
+    Hub_Net_acquireGlobalClientsLock();
+    List_append(clients, client);
+    Hub_Net_releaseGlobalClientsLock();
+
+#ifdef USE_THREADS
+    /* Start client thread */
+    pthread_create(&client->thread, NULL, Hub_Net_clientThread, client);
+#endif
 }
 
 /**
@@ -190,21 +360,21 @@ List* Hub_Net_getConnectedClients(void) {
  * Main loop which processes client requests and handles all client connections
  */
 void Hub_Net_mainLoop(void) {
+#ifndef USE_THREADS
+    /** File descriptor mask passed to select() */
+    fd_set fdset_mask_r;
 
-    /* Used to set the SO_RCVTIMEO (receive timeout) socket option on client
-       sockets. 250 milliseconds */
-    const struct timeval client_timeout = {.tv_sec = 0, .tv_usec = 250 * 1000};
+    Comm_Message* client_message;
+    int client_count, n;
+#endif
 
     /* Temporary storage for new client connections until a Hub_Client structure
        can be allocated for them */
     int client_new = 0;
 
-    /** File descriptor mask passed to select() */
-    fd_set fdset_mask_r;
-    Comm_Message* client_message;
+    /* Temporary variables */
     Hub_Client* client;
-    int client_count;
-    int n, i; /* misc */
+    int i;
 
     /* Create and ready the server socket */
     Hub_Net_initServerSocket();
@@ -215,8 +385,27 @@ void Hub_Net_mainLoop(void) {
     /* Main loop is now running */
     mainloop_running = true;
 
+    /* Spawn thread to remove clients after they are marked closed */
+    close_clients_thread = Task_background(Hub_Net_removeMarkedClosedClients);
+
     /* Start sending/recieving messages */
     while(run_mainloop) {
+#ifdef USE_THREADS
+        client_new = accept(svr_sock, NULL, 0);
+
+        if(run_mainloop == false ) {
+            break;
+        }
+
+        if(client_new < 0) {
+            Hub_Logging_log(ERROR, "Error accepting new client connection");
+            continue;
+        }
+
+        Hub_Net_acceptClient(client_new);
+
+#else
+
         /* Save a copy of the current number of clients */
         client_count = List_getSize(clients);
 
@@ -258,31 +447,7 @@ void Hub_Net_mainLoop(void) {
         /* Accept a new connection when the server socket is set */
         if(FD_ISSET(svr_sock, &fdset_mask_r)) {
             client_new = accept(svr_sock, NULL, 0);
-
-            if(client_new < 0) {
-                Hub_Logging_log(ERROR, "Error accepting new client connection");
-                perror("Error accepting new client");
-            } else if(client_count >= MAX_CLIENTS) {
-                Hub_Logging_log(ERROR, Util_format("Unable to accept new client connection! Maximum clients (%d) exceeded", MAX_CLIENTS));
-                shutdown(client_new, SHUT_RDWR);
-                close(client_new);
-            } else {
-                Hub_Logging_log(DEBUG, "Accepted new client connection");
-
-                /* Set a timeout on receive operations to keep broken client
-                   connections from deadlocking the hub */
-                setsockopt(client_new, SOL_SOCKET, SO_RCVTIMEO, &client_timeout, sizeof(client_timeout));
-
-                client = malloc(sizeof(Hub_Client));
-                client->sock = client_new;
-                client->state = UNAUTHENTICATED;
-                client->name = NULL;
-                client->filters = NULL;
-                client->filters_n = 0;
-
-                List_append(clients, client);
-            }
-
+            Hub_Net_acceptClient(client_new);
             client_new = 0;
         }
 
@@ -305,17 +470,25 @@ void Hub_Net_mainLoop(void) {
                 Comm_Message_destroy(client_message);
             }
         }
-
-        /* Cleanup any clients that have been closed */
-        Hub_Net_removeMarkedClosedClients();
+#endif
     }
 
     /* Kick all still attached clients */
+    Hub_Net_acquireGlobalClientsLock();
     for(i = 0; (client = List_get(clients, i)) != NULL; i++) {
         Hub_Client_kick(client, "Hub closing");
     }
-    Hub_Net_removeMarkedClosedClients();
+    Hub_Net_releaseGlobalClientsLock();
 
+    /* Ensure removeMarkedClosedClients stops blocking to exit */
+    Queue_append(closed_clients, NULL);
+
+    /* Wait for all client threads to complete */
+    Hub_Net_joinClientThreads();
+
+    pthread_mutexattr_destroy(&recursive_mutex);
+
+    /* Signal loop as ended */
     pthread_mutex_lock(&mainloop_done_lock);
     mainloop_running = false;
     shutdown(svr_sock, SHUT_RDWR);
@@ -324,5 +497,4 @@ void Hub_Net_mainLoop(void) {
     pthread_cond_broadcast(&mainloop_done);
     pthread_mutex_unlock(&mainloop_done_lock);
 }
-
 /** \} */

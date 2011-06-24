@@ -105,8 +105,8 @@ static void Hub_close(void) {
     pthread_mutex_lock(&hub_close_lock);
     if(!closed) {
         Hub_Logging_log(INFO, "Closing");
-        Hub_Var_close();
         Hub_Net_close();
+        Hub_Var_close();
         Hub_Logging_close();
         Hub_Config_close();
 

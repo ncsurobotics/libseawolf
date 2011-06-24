@@ -77,8 +77,8 @@ static int Hub_Process_comm(Hub_Client* client, Comm_Message* message) {
  * \return Response action
  */
 static int Hub_Process_notify(Hub_Client* client, Comm_Message* message) {
-	static char* notify_0 = "NOTIFY";
-	static char* notify_1 = "IN";
+    static char* notify_0 = "NOTIFY";
+    static char* notify_1 = "IN";
 
     Comm_Message* notification;
 
@@ -86,23 +86,23 @@ static int Hub_Process_notify(Hub_Client* client, Comm_Message* message) {
     	notification = Comm_Message_new(3);
     	notification->components[0] = notify_0;
     	notification->components[1] = notify_1;
-		notification->components[2] = message->components[2];
-		Hub_Net_broadcastNotification(notification);
+        notification->components[2] = message->components[2];
+        Hub_Net_broadcastNotification(notification);
 
-		Comm_Message_destroy(notification);
+        Comm_Message_destroy(notification);
 
-	} else if(message->count == 4 && strcmp(message->components[1], "ADD_FILTER") == 0) {
-		Notify_FilterType type = (Notify_FilterType) atoi(message->components[2]);
-		const char* filter_body = message->components[3];
-		Hub_Client_addFilter(client, type, filter_body);
+    } else if(message->count == 4 && strcmp(message->components[1], "ADD_FILTER") == 0) {
+        Notify_FilterType type = (Notify_FilterType) atoi(message->components[2]);
+        const char* filter_body = message->components[3];
+        Hub_Client_addFilter(client, type, filter_body);
 
 
-	} else if(message->count == 2 && strcmp(message->components[1], "CLEAR_FILTERS") == 0) {
-		Hub_Client_clearFilters(client);
+    } else if(message->count == 2 && strcmp(message->components[1], "CLEAR_FILTERS") == 0) {
+        Hub_Client_clearFilters(client);
 
-	} else {
-		return -1;
-	}
+    } else {
+        return -1;
+    }
 
     return 0;
 }
@@ -148,6 +148,8 @@ static int Hub_Process_var(Hub_Client* client, Comm_Message* message) {
             Hub_Client_kick(client, Util_format("Invalid variable access (%s)", message->components[2]));
             return -1;
         } else {
+            pthread_rwlock_rdlock(&var->lock);
+
             response = Comm_Message_new(4);
             response->request_id = message->request_id;
             response->components[0] = MemPool_strdup(response->alloc, "VAR");
@@ -159,6 +161,8 @@ static int Hub_Process_var(Hub_Client* client, Comm_Message* message) {
             } else {
                 response->components[2] = MemPool_strdup(response->alloc, "RW");
             }
+
+            pthread_rwlock_unlock(&var->lock);
 
             Hub_Net_sendMessage(client, response);
             Comm_Message_destroy(response);
