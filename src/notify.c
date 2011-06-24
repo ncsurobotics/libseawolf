@@ -176,25 +176,25 @@ int Notify_available(void) {
  * \param filter The filter text, applied as described by the filter_type
  */
 void Notify_filter(Notify_FilterType filter_type, char* filter) {
-	Comm_Message* message;
-	static char* NOTIFY = "NOTIFY";
-	static char* ADD_FILTER = "ADD_FILTER";
-	static char* CLEAR_FILTERS = "CLEAR_FILTERS";
+    Comm_Message* message;
+    static char* NOTIFY = "NOTIFY";
+    static char* ADD_FILTER = "ADD_FILTER";
+    static char* CLEAR_FILTERS = "CLEAR_FILTERS";
 
     if(filter == NULL) {
-    	message = Comm_Message_new(2);
-    	message->components[0] = NOTIFY;
-    	message->components[1] = CLEAR_FILTERS;
+        message = Comm_Message_new(2);
+        message->components[0] = NOTIFY;
+        message->components[1] = CLEAR_FILTERS;
     } else {
-    	message = Comm_Message_new(4);
-    	message->components[0] = NOTIFY;
-    	message->components[1] = ADD_FILTER;
-    	message->components[2] = __Util_format("%d", (int) filter_type);
-    	message->components[3] = filter;
+        message = Comm_Message_new(4);
+        message->components[0] = NOTIFY;
+        message->components[1] = ADD_FILTER;
+        message->components[2] = __Util_format("%d", (int) filter_type);
+        message->components[3] = filter;
     }
 
     Comm_sendMessage(message);
-	Comm_Message_destroy(message);
+    Comm_Message_destroy(message);
 }
 
 /**

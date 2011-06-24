@@ -83,9 +83,9 @@ static int Hub_Process_notify(Hub_Client* client, Comm_Message* message) {
     Comm_Message* notification;
 
     if(message->count == 3 && strcmp(message->components[1], "OUT") == 0) {
-    	notification = Comm_Message_new(3);
-    	notification->components[0] = notify_0;
-    	notification->components[1] = notify_1;
+        notification = Comm_Message_new(3);
+        notification->components[0] = notify_0;
+        notification->components[1] = notify_1;
         notification->components[2] = message->components[2];
         Hub_Net_broadcastNotification(notification);
 

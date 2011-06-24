@@ -16,20 +16,20 @@
  * Types of filters
  */
 typedef enum {
-	/**
-	 * Match the filter on the whole message
-	 */
-	FILTER_MATCH = 0x01,
+    /**
+     * Match the filter on the whole message
+     */
+    FILTER_MATCH = 0x01,
 
-	/**
-	 * Match the filter on the message action
-	 */
-	FILTER_ACTION = 0x02,
+    /**
+     * Match the filter on the message action
+     */
+    FILTER_ACTION = 0x02,
 
-	/**
-	 * Match the filter on some prefix of the message
-	 */
-	FILTER_PREFIX = 0x03,
+    /**
+     * Match the filter on some prefix of the message
+     */
+    FILTER_PREFIX = 0x03,
 } Notify_FilterType;
 
 /**

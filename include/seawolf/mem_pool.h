@@ -19,36 +19,36 @@
  * using MemPool_reserve, MemPool_write, and MemPool_strdup.
  */
 struct MemPool_Alloc_s {
-	/**
-	 * The base address of this memory allocation
-	 */
-	void* base;
+    /**
+     * The base address of this memory allocation
+     */
+    void* base;
 
-	/**
-	 * The write index (in bytes) within the block
-	 */
-	uint16_t write_index;
+    /**
+     * The write index (in bytes) within the block
+     */
+    uint16_t write_index;
 
-	/**
-	 * The size of the block
-	 */
-	size_t size;
+    /**
+     * The size of the block
+     */
+    size_t size;
 
-	/**
-	 * The index of the block this allocation was made from
-	 */
-	int block_index;
+    /**
+     * The index of the block this allocation was made from
+     */
+    int block_index;
 
-	/**
-	 * True if this allocation has been directly malloced
-	 */
-	bool external;
+    /**
+     * True if this allocation has been directly malloced
+     */
+    bool external;
 
-	/**
-	 * Pointer to the next free allocation descriptor if this descriptor is
-	 * also free
-	 */
-	struct MemPool_Alloc_s* next_free;
+    /**
+     * Pointer to the next free allocation descriptor if this descriptor is
+     * also free
+     */
+    struct MemPool_Alloc_s* next_free;
 };
 typedef struct MemPool_Alloc_s MemPool_Alloc;
 
@@ -59,30 +59,30 @@ typedef struct MemPool_Alloc_s MemPool_Alloc;
  * (MemPool_Alloc's) are drawn from these blocks
  */
 typedef struct {
-	/**
-	 * The base address of the block
-	 */
-	void* base;
+    /**
+     * The base address of the block
+     */
+    void* base;
 
-	/**
-	 * Each block has a unique index specifying its index within the block list
-	 */
-	uint16_t index;
+    /**
+     * Each block has a unique index specifying its index within the block list
+     */
+    uint16_t index;
 
-	/**
-	 * A bit-map of which chunks in the block are allocated to MemPool_Alloc's
-	 */
-	uint32_t alloc_map;
+    /**
+     * A bit-map of which chunks in the block are allocated to MemPool_Alloc's
+     */
+    uint32_t alloc_map;
 
-	/**
-	 * A lock that must be acquire to modify/access the block
-	 */
-	pthread_mutex_t lock;
+    /**
+     * A lock that must be acquire to modify/access the block
+     */
+    pthread_mutex_t lock;
 
-	/**
-	 * The block is fully allocated (no free chunks)
-	 */
-	bool full;
+    /**
+     * The block is fully allocated (no free chunks)
+     */
+    bool full;
 } MemPool_Block;
 
 /** \} */
