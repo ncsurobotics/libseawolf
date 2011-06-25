@@ -7,6 +7,32 @@ static char* CLOSING = "CLOSING";
 static char* KICKING = "KICKING";
 
 /**
+ * Create a new client object
+ */
+Hub_Client* Hub_Client_new(int sock) {
+    Hub_Client* client;
+    pthread_mutexattr_t recursive_mutex;
+
+    /* Initialize attributes for client send locks */
+    pthread_mutexattr_init(&recursive_mutex);
+    pthread_mutexattr_settype(&recursive_mutex, PTHREAD_MUTEX_RECURSIVE);
+
+    client = malloc(sizeof(Hub_Client));
+    client->sock = sock;
+    client->state = UNAUTHENTICATED;
+    client->name = NULL;
+    client->filters = NULL;
+    client->filters_n = 0;
+    client->subscribed_vars = List_new();
+
+    pthread_rwlock_init(&client->filter_lock, NULL);
+    pthread_rwlock_init(&client->in_use, NULL);
+    pthread_mutex_init(&client->lock, &recursive_mutex);
+
+    return client;
+}
+
+/**
  * Kick client from the hub
  */
 void Hub_Client_kick(Hub_Client* client, char* reason) {
@@ -43,7 +69,7 @@ void Hub_Client_close(Hub_Client* client) {
 void Hub_Client_addFilter(Hub_Client* client, Notify_FilterType type, const char* filter) {
     int i;
 
-    pthread_mutex_lock(&client->filter_lock);
+    pthread_rwlock_wrlock(&client->filter_lock);
     i = client->filters_n;
     client->filters_n++;
     client->filters = realloc(client->filters, sizeof(char*) * client->filters_n);
@@ -51,7 +77,7 @@ void Hub_Client_addFilter(Hub_Client* client, Notify_FilterType type, const char
 
     client->filters[i][0] = (unsigned char) type;
     strcpy(client->filters[i] + 1, filter);
-    pthread_mutex_unlock(&client->filter_lock);
+    pthread_rwlock_unlock(&client->filter_lock);
 }
 
 /**
@@ -62,7 +88,7 @@ void Hub_Client_clearFilters(Hub_Client* client) {
         return;
     }
 
-    pthread_mutex_lock(&client->filter_lock);
+    pthread_rwlock_wrlock(&client->filter_lock);
     for(int i = 0; i < client->filters_n; i++) {
         free(client->filters[i]);
     }
@@ -70,7 +96,7 @@ void Hub_Client_clearFilters(Hub_Client* client) {
     free(client->filters);
     client->filters = NULL;
     client->filters_n = 0;
-    pthread_mutex_unlock(&client->filter_lock);
+    pthread_rwlock_unlock(&client->filter_lock);
 }
 
 /**
@@ -83,7 +109,7 @@ bool Hub_Client_checkFilters(Hub_Client* client, Comm_Message* message) {
     char* filter_body;
     bool r = false;
 
-    pthread_mutex_lock(&client->filter_lock);
+    pthread_rwlock_rdlock(&client->filter_lock);
     for(int i = 0; i < client->filters_n; i++) {
         type = (Notify_FilterType) client->filters[i][0];
         filter_body = client->filters[i] + 1;
@@ -115,6 +141,6 @@ bool Hub_Client_checkFilters(Hub_Client* client, Comm_Message* message) {
         }
     }
 
-    pthread_mutex_unlock(&client->filter_lock);
+    pthread_rwlock_unlock(&client->filter_lock);
     return r;
 }

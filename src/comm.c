@@ -252,6 +252,9 @@ static int Comm_receiveThread(void) {
         } else if(strcmp(message->components[0], "NOTIFY") == 0) {
             /* Inbound notification */
             Notify_inputMessage(message);
+        } else if(strcmp(message->components[0], "WATCH") == 0) {
+            /* Inbound variable subscription udpdate */
+            Var_inputMessage(message);
         } else if(strcmp(message->components[0], "COMM") == 0) {
             if(strcmp(message->components[1], "KICKING") == 0) {
                 hub_shutdown = true;

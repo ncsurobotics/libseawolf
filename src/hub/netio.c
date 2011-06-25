@@ -16,8 +16,6 @@
  * \{
  */
 
-static int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* packed_message);
-
 /**
  * \brief Receive a message from the given client
  *
@@ -90,7 +88,7 @@ Comm_Message* Hub_Net_receiveMessage(Hub_Client* client) {
  * \param packed_message The packed message to send
  * \return The number of bytes sent or -1 in the even of an error
  */
-static int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* packed_message) {
+int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* packed_message) {
     struct pollfd fd = {.fd = client->sock, .events = POLLOUT};
     int n = -1;
 
@@ -103,6 +101,7 @@ static int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* pac
         n = send(client->sock, packed_message->data, packed_message->length, 0);
     } else {
         /* Socket not ready to accept data */
+        perror("send");
         Hub_Logging_log(ERROR, "Unable to write data to full network socket");
     }
 

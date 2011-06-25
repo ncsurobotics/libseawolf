@@ -77,7 +77,8 @@ Dictionary* Dictionary_new(void) {
         return NULL;
     }
 
-    pthread_mutex_init(&dict->lock, NULL);
+    pthread_rwlock_init(&dict->lock, NULL);
+    pthread_mutex_init(&dict->new_data_lock, NULL);
     pthread_cond_init(&dict->new_item, NULL);
 
     return dict;
@@ -130,7 +131,7 @@ void Dictionary_setData(Dictionary* dict, const void* k, size_t k_size, void* v)
     Dictionary_Item* item;
     Dictionary_Item* last = NULL;
 
-    pthread_mutex_lock(&dict->lock);
+    pthread_rwlock_wrlock(&dict->lock);
 
     item = dict->buckets[bucket];
     while(item) {
@@ -161,8 +162,10 @@ void Dictionary_setData(Dictionary* dict, const void* k, size_t k_size, void* v)
     }
 
  release_locks:
+    pthread_mutex_lock(&dict->new_data_lock);
     pthread_cond_broadcast(&dict->new_item);
-    pthread_mutex_unlock(&dict->lock);
+    pthread_mutex_unlock(&dict->new_data_lock);
+    pthread_rwlock_unlock(&dict->lock);
 }
 
 /**
@@ -232,9 +235,9 @@ static Dictionary_Item* Dictionary_getItem(Dictionary* dict, const void* k, size
 void* Dictionary_getData(Dictionary* dict, const void* k, size_t k_size) {
     Dictionary_Item* item;
 
-    pthread_mutex_lock(&dict->lock);
+    pthread_rwlock_rdlock(&dict->lock);
     item = Dictionary_getItem(dict, k, k_size);
-    pthread_mutex_unlock(&dict->lock);
+    pthread_rwlock_unlock(&dict->lock);
 
     if(item == NULL) {
         /* Invalid key */
@@ -280,11 +283,11 @@ void* Dictionary_get(Dictionary* dict, const char* k) {
  * \param k_size The generic key size
  */
 void Dictionary_waitForData(Dictionary* dict, const void* k, size_t k_size) {
-    pthread_mutex_lock(&dict->lock);
+    pthread_mutex_lock(&dict->new_data_lock);
     while(Dictionary_getItem(dict, k, k_size) == NULL) {
-        pthread_cond_wait(&dict->new_item, &dict->lock);
+        pthread_cond_wait(&dict->new_item, &dict->new_data_lock);
     }
-    pthread_mutex_unlock(&dict->lock);
+    pthread_mutex_unlock(&dict->new_data_lock);
 }
 
 /**
@@ -325,9 +328,9 @@ bool Dictionary_existsData(Dictionary* dict, const void* k, size_t k_size) {
     /* If a Dictionary_Item does not exist for the key then return false */
     Dictionary_Item* item;
 
-    pthread_mutex_lock(&dict->lock);
+    pthread_rwlock_rdlock(&dict->lock);
     item = Dictionary_getItem(dict, k, k_size);
-    pthread_mutex_unlock(&dict->lock);
+    pthread_rwlock_unlock(&dict->lock);
 
     if(item == NULL) {
         return false;
@@ -380,7 +383,7 @@ int Dictionary_removeData(Dictionary* dict, const void* k, size_t k_size) {
     Dictionary_Item* item;
     int retval = -1;
 
-    pthread_mutex_lock(&dict->lock);
+    pthread_rwlock_wrlock(&dict->lock);
 
     item = dict->buckets[bucket];
     while(item) {
@@ -401,7 +404,7 @@ int Dictionary_removeData(Dictionary* dict, const void* k, size_t k_size) {
         item = item->next;
     }
 
-    pthread_mutex_unlock(&dict->lock);
+    pthread_rwlock_unlock(&dict->lock);
     return retval;
 }
 

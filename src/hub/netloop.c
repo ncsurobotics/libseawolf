@@ -49,9 +49,6 @@ static bool mainloop_running = false;
 static pthread_cond_t mainloop_done = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t mainloop_done_lock = PTHREAD_MUTEX_INITIALIZER;
 
-/** Mutext attribute for a recursive mutex */
-pthread_mutexattr_t recursive_mutex;
-
 #ifdef USE_THREADS
 /** Task handle of thread that destroys clients */
 static Task_Handle close_clients_thread;
@@ -76,29 +73,50 @@ bool blocking_close_clients = false;
  */
 static int Hub_Net_removeMarkedClosedClients(void) {
     Hub_Client* client;
+    Hub_Var* subscription;
 
     /* NULL pushed to the queue after all clients have been disconnected
        during shutdown */
     while((client = Queue_pop(closed_clients, blocking_close_clients)) != NULL) {
+        /* Immediately close the socket. The client can not longer generate requests */
+        printf("Removing \n");
+        shutdown(client->sock, SHUT_RDWR);
+        close(client->sock);
+        
+        /* Remove client from clients list */
         Hub_Net_acquireGlobalClientsLock();
         List_remove(clients, List_indexOf(clients, client));
         Hub_Net_releaseGlobalClientsLock();
-        
-#ifdef USE_THREADS
-        /* No threads can discover the client since it is no longer in the
-           client list. Simply wait for any threads to finish using it that may
-           be currently */
-        pthread_rwlock_wrlock(&client->in_use);
 
-        /* Wait for the client to exit */
+#ifdef USE_THREADS
+        /* Wait for the client thread to terminate */
         pthread_join(client->thread, NULL);
 #endif
+        
+        /* With the client thread dead and the client removed from the client
+           list the client is inaccessible at this point. Only threads which
+           acquired a reference before the client was closed may still have
+           access to it */
 
-        /* Free the client's resources */
+        /* Remove client variable subscriptions. Once this completes the var
+           module has no access to this client. We use List_get instead of
+           List_remove because the deleteSubscriber call does the remove for
+           us */
+        while((subscription = List_get(client->subscribed_vars, 0)) != NULL) {
+            Hub_Var_deleteSubscriber(client, subscription->name);
+        }
+        
+        /* Clear client filters */
         Hub_Client_clearFilters(client);
-        shutdown(client->sock, SHUT_RDWR);
-        close(client->sock);
+        
+#ifdef USE_THREADS
+        /* Wait for any thread which holds an in_use read lock on the client to
+           complete. No more threads could possibly try to acquire a read lock
+           so we're just waiting for existing locks to expire */
+        pthread_rwlock_wrlock(&client->in_use);
+#endif
 
+        /* The client is completely removed and unused. Safe to free backing memory */
         free(client);
     }
 
@@ -126,9 +144,6 @@ void Hub_Net_init(void) {
     clients = List_new();
     closed_clients = Queue_new();
 
-    /* Initialize attributes for client send locks */
-    pthread_mutexattr_init(&recursive_mutex);
-    pthread_mutexattr_settype(&recursive_mutex, PTHREAD_MUTEX_RECURSIVE);
 }
 
 #ifdef USE_THREADS
@@ -335,16 +350,7 @@ static void Hub_Net_acceptClient(int client_new) {
     setsockopt(client_new, SOL_SOCKET, SO_RCVTIMEO, &client_timeout, sizeof(client_timeout));
 #endif
 
-    client = malloc(sizeof(Hub_Client));
-    client->sock = client_new;
-    client->state = UNAUTHENTICATED;
-    client->name = NULL;
-    client->filters = NULL;
-    client->filters_n = 0;
-
-    pthread_mutex_init(&client->filter_lock, NULL);
-    pthread_rwlock_init(&client->in_use, NULL);
-    pthread_mutex_init(&client->lock, &recursive_mutex);
+    client = Hub_Client_new(client_new);
 
     Hub_Net_acquireGlobalClientsLock();
     List_append(clients, client);
@@ -495,8 +501,6 @@ void Hub_Net_mainLoop(void) {
 #else
     Hub_Net_removeMarkedClosedClients();
 #endif
-
-    pthread_mutexattr_destroy(&recursive_mutex);
 
     /* Signal loop as ended */
     pthread_mutex_lock(&mainloop_done_lock);

@@ -263,6 +263,7 @@ static void Hub_Var_readDefinitions(void) {
         new_var->value = default_value;
         new_var->persistent = persistent;
         new_var->readonly = readonly;
+        new_var->subscribers = List_new();
         
         pthread_rwlock_init(&new_var->lock, NULL);
 
@@ -321,7 +322,14 @@ Hub_Var* Hub_Var_get(const char* name) {
  * returned. If the variable is readonly then -2 will be returned.
  */
 int Hub_Var_setValue(const char* name, double value) {
+    static char* watch_0 = "WATCH";
+    char value_str[32];
+
     Hub_Var* var = Dictionary_get(var_cache, name);
+    Hub_Client* subscriber;
+    Comm_Message* message;
+    Comm_PackedMessage* packed;
+
     if(var == NULL) {
         return -1;
     }
@@ -331,13 +339,75 @@ int Hub_Var_setValue(const char* name, double value) {
     }
 
     pthread_rwlock_wrlock(&var->lock);
-
     var->value = value;
     if(var->persistent) {
         Hub_Var_flushPersistent();
     }
-
     pthread_rwlock_unlock(&var->lock);
+
+    /* Don't waste time building the message if there are no subscribers */
+    if(List_getSize(var->subscribers) == 0) {
+        return 0;
+    }
+
+    message = Comm_Message_new(3);
+    message->components[0] = watch_0;
+    message->components[1] = (char*) name;
+    message->components[2] = value_str;
+
+    pthread_rwlock_rdlock(&var->lock);
+    snprintf(value_str, sizeof(value_str), "%f", var->value);
+
+    packed = Comm_packMessage(message);
+    for(int i = 0; (subscriber = List_get(var->subscribers, i)) != NULL; i++) {
+        Hub_Net_sendPackedMessage(subscriber, packed);
+    }
+    pthread_rwlock_unlock(&var->lock);
+
+    Comm_Message_destroy(message);
+
+    return 0;
+}
+
+int Hub_Var_addSubscriber(Hub_Client* client, const char* name) {
+    Hub_Var* var = Dictionary_get(var_cache, name);
+
+    if(var == NULL) {
+        return -1;
+    }
+
+    pthread_rwlock_wrlock(&var->lock);
+    List_append(var->subscribers, client);
+    pthread_rwlock_unlock(&var->lock);
+
+    List_append(client->subscribed_vars, var);
+
+    return 0;
+}
+
+int Hub_Var_deleteSubscriber(Hub_Client* client, const char* name) {
+    Hub_Var* var = Dictionary_get(var_cache, name);
+    int i;
+
+    if(var == NULL) {
+        return -1;
+    }
+
+    pthread_rwlock_wrlock(&var->lock);
+    i = List_indexOf(var->subscribers, client);
+    if(i == -1) {
+        return -1;
+    }
+
+    List_remove(var->subscribers, i);
+    pthread_rwlock_unlock(&var->lock);
+
+    i = List_indexOf(client->subscribed_vars, var);
+    if(i == -1) {
+        return -2;
+    }
+
+    List_remove(client->subscribed_vars, i);
 
     return 0;
 }

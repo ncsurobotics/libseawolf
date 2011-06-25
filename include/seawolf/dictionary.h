@@ -66,10 +66,16 @@ typedef struct {
     unsigned int item_count;
 
     /**
-     * Dictionary mutex lock
+     * Dictionary r/w lock
      * \private
      */
-    pthread_mutex_t lock;
+    pthread_rwlock_t lock;
+
+    /**
+     * Dictionary new data mutex lock
+     * \private
+     */
+    pthread_mutex_t new_data_lock;
 
     /**
      * New item conditional

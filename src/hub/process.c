@@ -96,7 +96,6 @@ static int Hub_Process_notify(Hub_Client* client, Comm_Message* message) {
         const char* filter_body = message->components[3];
         Hub_Client_addFilter(client, type, filter_body);
 
-
     } else if(message->count == 2 && strcmp(message->components[1], "CLEAR_FILTERS") == 0) {
         Hub_Client_clearFilters(client);
 
@@ -105,6 +104,32 @@ static int Hub_Process_notify(Hub_Client* client, Comm_Message* message) {
     }
 
     return 0;
+}
+
+static int Hub_Process_watch(Hub_Client* client, Comm_Message* message) {
+    int n = -1;
+    
+    /* -> WATCH ADD <var name>
+       -> WATCH DEL <var name>
+       <- WATCH <var name> <value> */
+
+    if(message->count == 3) {
+        if(strcmp(message->components[1], "ADD") == 0) {
+            n = Hub_Var_addSubscriber(client, message->components[2]);
+            if(n == -1) {
+                /* Invalid variable access! Banish the beast! */
+                Hub_Client_kick(client, Util_format("Subscribing to invalid variable (%s)", message->components[2]));
+            }
+        } else if(strcmp(message->components[1], "DEL") == 0) {
+            n = Hub_Var_deleteSubscriber(client, message->components[2]);
+            if(n == -1) {
+                /* Invalid variable access! Banish the beast! */
+                Hub_Client_kick(client, Util_format("Unsubscribing to invalid variable (%s)", message->components[2]));
+            }
+        }
+    }
+
+    return n;
 }
 
 /**
@@ -207,6 +232,8 @@ int Hub_Process_process(Hub_Client* client, Comm_Message* message) {
             return Hub_Process_notify(client, message);
         } else if(strcmp(message->components[0], "VAR") == 0) {
             return Hub_Process_var(client, message);
+        } else if(strcmp(message->components[0], "WATCH") == 0) {
+            return Hub_Process_watch(client, message);
         } else if(strcmp(message->components[0], "LOG") == 0) {
             return Hub_Process_log(message);
         }

@@ -5,6 +5,17 @@
 
 #include "seawolf.h"
 
+typedef struct {
+    float* writeback;
+
+    float last;
+    float current;
+
+    bool poked;
+
+    pthread_rwlock_t lock;
+} Subscription;
+
 /** If true, then notications are sent out with variable updates */
 static bool notify = true;
 
@@ -13,6 +24,16 @@ static bool initialized = false;
 
 /** Read only variable cache */
 static Dictionary* ro_cache = NULL;
+
+static Dictionary* subscriptions = NULL;
+
+static bool data_available = false;
+static pthread_mutex_t data_available_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t new_data_available = PTHREAD_COND_INITIALIZER;
+
+static pthread_rwlock_t subscriptions_lock = PTHREAD_RWLOCK_INITIALIZER;
+
+static void Var_inputNewValue(char* name, float value);
 
 /**
  * \defgroup Var Shared variable
@@ -27,6 +48,7 @@ static Dictionary* ro_cache = NULL;
  */
 void Var_init(void) {
     ro_cache = Dictionary_new();
+    subscriptions = Dictionary_new();
     initialized = true;
 }
 
@@ -44,8 +66,26 @@ float Var_get(char* name) {
 
     Comm_Message* variable_request;
     Comm_Message* response;
+    Subscription* subscription;
     float value;
     float* cached;
+
+    pthread_rwlock_rdlock(&subscriptions_lock); {
+        subscription = Dictionary_get(subscriptions, name);
+        if(subscription) {
+            pthread_rwlock_wrlock(&subscription->lock); {
+                subscription->last = subscription->current;
+                subscription->poked = false;
+            }
+            pthread_rwlock_unlock(&subscription->lock);
+            value = subscription->current;
+        }
+    }
+    pthread_rwlock_unlock(&subscriptions_lock);
+    
+    if(subscription) {
+        return value;
+    }
 
     cached = Dictionary_get(ro_cache, name);
     if(cached) {
@@ -103,8 +143,200 @@ void Var_set(char* name, float value) {
         Notify_send("UPDATED", name);
     }
 
+    if(Dictionary_get(subscriptions, name)) {
+        Var_inputNewValue(name, value);
+    }
+
     free(variable_set->components[3]);
     Comm_Message_destroy(variable_set);
+}
+
+int Var_subscribe(char* name) {
+    static char* namespace = "WATCH";
+    static char* command = "ADD";
+
+    Comm_Message* request = Comm_Message_new(3);
+    Subscription* s = malloc(sizeof(Subscription));
+
+    s->writeback = NULL;
+    s->last = Var_get(name);
+    s->current = s->last;
+    s->poked = false;
+    pthread_rwlock_init(&s->lock, NULL);
+
+    request->components[0] = namespace;
+    request->components[1] = command;
+    request->components[2] = name;
+
+    pthread_rwlock_wrlock(&subscriptions_lock); {
+        Dictionary_set(subscriptions, name, s);
+        Comm_sendMessage(request);
+    }
+    pthread_rwlock_unlock(&subscriptions_lock);
+
+    Comm_Message_destroy(request);
+
+    return 0;
+}
+
+int Var_bind(char* name, float* store_to) {
+    Subscription* s;
+
+    Var_subscribe(name);
+
+    pthread_rwlock_rdlock(&subscriptions_lock); {
+        s = Dictionary_get(subscriptions, name);
+        s->writeback = store_to;
+    }
+    pthread_rwlock_unlock(&subscriptions_lock);
+
+    (*s->writeback) = s->current;
+    
+    return 0;
+}
+
+void Var_unsubscribe(char* name) {
+    static char* namespace = "WATCH";
+    static char* command = "DEL";
+
+    Comm_Message* request = Comm_Message_new(3);
+    Subscription* s;
+
+    request->components[0] = namespace;
+    request->components[1] = command;
+    request->components[2] = name;
+
+    Comm_sendMessage(request);
+    Comm_Message_destroy(request);
+
+    s = Dictionary_get(subscriptions, name);
+    if(s == NULL) {
+        /* We probably never were subscribed. We'll likely be booted by the hub
+           shortly */
+        return;
+    }
+
+    pthread_rwlock_wrlock(&subscriptions_lock); {
+        Dictionary_remove(subscriptions, name);
+        free(s);
+    }
+    pthread_rwlock_unlock(&subscriptions_lock);
+}
+
+void Var_unbind(char* name) {
+    Var_unsubscribe(name);
+}
+
+bool Var_stale(char* name) {
+    Subscription* s;
+    bool stale;
+
+    pthread_rwlock_rdlock(&subscriptions_lock); {
+        s = Dictionary_get(subscriptions, name);
+        if(s == NULL) {
+            Logging_log(CRITICAL, Util_format("Subscription call on unsubscribed variable '%s'", name));
+            Seawolf_exitError();
+        }
+
+        pthread_rwlock_rdlock(&s->lock); {
+            stale = s->poked && (s->last != s->current);
+        }
+        pthread_rwlock_unlock(&s->lock);
+    }
+    pthread_rwlock_unlock(&subscriptions_lock);
+
+    return stale;
+}
+
+bool Var_poked(char* name) {
+    Subscription* s;
+    bool poked;
+
+    pthread_rwlock_rdlock(&subscriptions_lock); {
+        s = Dictionary_get(subscriptions, name);
+        if(s == NULL) {
+            Logging_log(CRITICAL, Util_format("Subscription call on unsubscribed variable '%s'", name));
+            Seawolf_exitError();
+        }
+
+        pthread_rwlock_rdlock(&s->lock); {
+            poked = s->poked;
+        }
+        pthread_rwlock_unlock(&s->lock);
+    }
+    pthread_rwlock_unlock(&subscriptions_lock);
+
+    return poked;
+}
+
+void Var_touch(char* name) {
+    Subscription* s;
+
+    pthread_rwlock_rdlock(&subscriptions_lock); {
+        s = Dictionary_get(subscriptions, name); 
+        if(s == NULL) {
+            Logging_log(CRITICAL, Util_format("Subscription call on unsubscribed variable '%s'", name));
+            Seawolf_exitError();
+        }
+
+        pthread_rwlock_wrlock(&s->lock); {
+            s->poked = false;
+            s->last = s->current;
+        }
+        pthread_rwlock_unlock(&s->lock);
+    }
+    pthread_rwlock_unlock(&subscriptions_lock);
+}
+
+void Var_sync(void) {
+    pthread_mutex_lock(&data_available_lock); {
+        while(data_available == false) {
+            pthread_cond_wait(&new_data_available, &data_available_lock);
+        }
+    }
+    pthread_mutex_unlock(&data_available_lock);
+}
+
+static void Var_inputNewValue(char* name, float value) {
+    Subscription* s;
+
+    /* OH NOES!!!
+
+       IT'S THE LOCK-NEST MONSTER!!! */
+
+    pthread_rwlock_rdlock(&subscriptions_lock); {
+        s = Dictionary_get(subscriptions, name);
+        if(s != NULL) {
+            pthread_rwlock_wrlock(&s->lock); {
+                s->last = s->current;
+                s->current = value;
+                s->poked = true;
+
+                if(s->writeback) {
+                    (*s->writeback) = s->current;
+                }
+            }
+            pthread_rwlock_unlock(&s->lock);
+        }
+
+        pthread_mutex_lock(&data_available_lock); {
+            pthread_cond_broadcast(&new_data_available);
+            data_available = true;
+        }
+        pthread_mutex_unlock(&data_available_lock);
+    }
+    pthread_rwlock_unlock(&subscriptions_lock);
+}
+
+void Var_inputMessage(Comm_Message* message) {
+    float value;
+
+    if(message->count == 3) {
+        value = atof(message->components[2]);
+        Var_inputNewValue(message->components[1], value);
+    }
+
+    Comm_Message_destroy(message);
 }
 
 /**
