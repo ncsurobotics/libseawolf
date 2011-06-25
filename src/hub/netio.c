@@ -101,7 +101,6 @@ int Hub_Net_sendPackedMessage(Hub_Client* client, Comm_PackedMessage* packed_mes
         n = send(client->sock, packed_message->data, packed_message->length, 0);
     } else {
         /* Socket not ready to accept data */
-        perror("send");
         Hub_Logging_log(ERROR, "Unable to write data to full network socket");
     }
 

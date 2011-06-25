@@ -293,6 +293,7 @@ void Var_sync(void) {
         while(data_available == false) {
             pthread_cond_wait(&new_data_available, &data_available_lock);
         }
+        data_available = true;
     }
     pthread_mutex_unlock(&data_available_lock);
 }
