@@ -79,7 +79,6 @@ static int Hub_Net_removeMarkedClosedClients(void) {
        during shutdown */
     while((client = Queue_pop(closed_clients, blocking_close_clients)) != NULL) {
         /* Immediately close the socket. The client can not longer generate requests */
-        printf("Removing \n");
         shutdown(client->sock, SHUT_RDWR);
         close(client->sock);
         
