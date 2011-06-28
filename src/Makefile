@@ -2,7 +2,7 @@
 include ../build/config.base.mk
 include ../$(CONFIG)
 
-CFLAGS += -fPIC -I../include/
+EXTRA_CFLAGS = -fPIC -I../include/
 
 SONAME = $(LIB_NAME).$(MAJOR)
 LDFLAGS += -lpthread --shared -Wl,-soname,$(SONAME)
@@ -11,7 +11,7 @@ LDFLAGS += $(EXTRA_LDFLAGS)
 INCLUDES= ../include/seawolf/*.h ../include/seawolf.h
 
 SRC = ardcomm.c logging.c main.c notify.c pid.c var.c config.c \
-      serial.c stack.c task.c timer.c util.c dictionary.c \
+      serial.c stack.c synch.c task.c timer.c util.c dictionary.c \
       list.c queue.c comm.c mem_pool.c
 OBJ = $(SRC:.c=.o)
 
@@ -27,7 +27,7 @@ pylib-install: pylib
 	cd python && $(PYTHON) setup.py install
 
 .c.o:
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(EXTRA_CFLAGS) $(CFLAGS) -c $< -o $@
 
 $(OBJ): $(INCLUDES)
 
