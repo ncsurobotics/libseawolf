@@ -57,6 +57,8 @@ Lock* Lock_new(void) {
  *
  * Create a new recursive lock. A recursive lock can be acquired multiple times
  * by the same thread.
+ *
+ * \return A new lock
  */
 Lock* Lock_newRecursiveLock(void) {
     Lock* lock = malloc(sizeof(Lock));

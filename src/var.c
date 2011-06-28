@@ -151,6 +151,14 @@ void Var_set(char* name, float value) {
     Comm_Message_destroy(variable_set);
 }
 
+/**
+ * \brief Subscribe to a variable
+ *
+ * Subsribe to the given variable
+ *
+ * \param name The name of the variable to subscribe to
+ * \return 0 on success
+ */
 int Var_subscribe(char* name) {
     static char* namespace = "WATCH";
     static char* command = "ADD";
@@ -179,6 +187,15 @@ int Var_subscribe(char* name) {
     return 0;
 }
 
+/**
+ * \brief Bind to a variable
+ *
+ * Subscribe to the give variable and automatically populate its value in the float whose reference is passed
+ *
+ * \param name Name of the variable to subscribe to
+ * \param store_to Pointer to a float to store the value of the variable when it is updated
+ * \return 0 on success
+ */
 int Var_bind(char* name, float* store_to) {
     Subscription* s;
 
@@ -195,6 +212,13 @@ int Var_bind(char* name, float* store_to) {
     return 0;
 }
 
+/**
+ * \brief Unsubcribe a variable
+ * 
+ * Unsubscribe from a previously subscribed variable
+ *
+ * \param name Name of the variable to unsubscribe from
+ */
 void Var_unsubscribe(char* name) {
     static char* namespace = "WATCH";
     static char* command = "DEL";
@@ -223,10 +247,29 @@ void Var_unsubscribe(char* name) {
     pthread_rwlock_unlock(&subscriptions_lock);
 }
 
+/**
+ * \brief Unbind a variable
+ * 
+ * Unsubscribe from a previously bound variable
+ *
+ * \param name Name of the variable to unsubscribe from
+ */
 void Var_unbind(char* name) {
     Var_unsubscribe(name);
 }
 
+/**
+ * \brief Check if the variable is stale
+ *
+ * Check if the given subscribed variable is stale. Return true if its value has
+ * changed and false otherwise. The applications may receive an update for the
+ * variable without the value changing. This function will return true only if
+ * the value has changed since the last call to Var_get or Var_touch for the
+ * variable
+ *
+ * \param name The name of the subscribed variable to check
+ * \return True if the variable is stale, false otherwise
+ */
 bool Var_stale(char* name) {
     Subscription* s;
     bool stale;
@@ -248,6 +291,18 @@ bool Var_stale(char* name) {
     return stale;
 }
 
+
+/**
+ * \brief Check if the variable has been poked
+ *
+ * Check if the given variable has been "poked" since the last call to Var_get
+ * or Var_touch for the variable. A variable is poked every time the
+ * applications receive an update for it. A variable which is poked is not
+ * necessarily stale.
+ *
+ * \param name The name of the subscribed variable to check
+ * \return True if the variable has been poked, false otherwise
+ */
 bool Var_poked(char* name) {
     Subscription* s;
     bool poked;
@@ -269,6 +324,13 @@ bool Var_poked(char* name) {
     return poked;
 }
 
+/**
+ * \brief Touch a variable
+ *
+ * Touch a variable, resetting its poked status
+ *
+ * \param name Name of the variable to touch
+ */
 void Var_touch(char* name) {
     Subscription* s;
 
@@ -288,6 +350,11 @@ void Var_touch(char* name) {
     pthread_rwlock_unlock(&subscriptions_lock);
 }
 
+/**
+ * \brief Wait for a variable update
+ *
+ * Wait for the next update of a subscribed variable
+ */
 void Var_sync(void) {
     pthread_mutex_lock(&data_available_lock); {
         while(data_available == false) {
@@ -298,6 +365,15 @@ void Var_sync(void) {
     pthread_mutex_unlock(&data_available_lock);
 }
 
+/**
+ * \brief Offer a new value for a variable to the subscription service
+ * \private
+ *
+ * Offer a new value for a variable to the subscription service
+ *
+ * \param name Name of the variable to update
+ * \param value New value of the variable
+ */
 static void Var_inputNewValue(char* name, float value) {
     Subscription* s;
 
@@ -329,6 +405,14 @@ static void Var_inputNewValue(char* name, float value) {
     pthread_rwlock_unlock(&subscriptions_lock);
 }
 
+/**
+ * \brief Receive a mesage from the Comm component
+ * \private
+ *
+ * Receive a message concerning variable subscriptions from the Comm component.
+ *
+ * \param message The input message
+ */
 void Var_inputMessage(Comm_Message* message) {
     float value;
 
