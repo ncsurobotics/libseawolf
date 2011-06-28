@@ -32,7 +32,7 @@ static int config_errno = 0;
 static int config_lineno = 0;
 
 /**
- * \brief Read a configuration file into a Dictionaryx
+ * \brief Read a configuration file into a Dictionary
  *
  * Parse the configuration file as described above and store all the key/value
  * pairs into a Dictionary which is returned.
