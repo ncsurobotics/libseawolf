@@ -5,6 +5,7 @@
 \defgroup Communications Communications
 \defgroup DataStructures Data Structures
 \defgroup Hardware Hardware Access
+\defgroup Multitasking Multitasking
 \defgroup Utilities Utilities
 
 \mainpage

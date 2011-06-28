@@ -41,6 +41,7 @@
 #include "seawolf/queue.h"
 #include "seawolf/serial.h"
 #include "seawolf/stack.h"
+#include "seawolf/synch.h"
 #include "seawolf/task.h"
 #include "seawolf/timer.h"
 #include "seawolf/util.h"

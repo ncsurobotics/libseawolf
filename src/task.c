@@ -56,7 +56,7 @@ static void* Task_watcher(void* _args);
 
 /**
  * \defgroup Task Task scheduling and management
- * \ingroup Utilities
+ * \ingroup Multitasking
  * \brief Utilities for scheduling tasks and performing simple multitasking
  * \{
  */
