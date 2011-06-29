@@ -69,7 +69,12 @@ bool blocking_close_clients = false;
  * \brief Remove clients previously marked as closed
  *
  * Remove clients that have been marked closed with a call to
- * Hub_Net_markClientCloesd
+ * Hub_Net_markClientCloesd. If the hub is compiled to be multithreaded, this
+ * runs as a seperate thread and doesn't return until the hub is shutting
+ * down. The single-threaded hub calls this function after processing client
+ * data with each select call.
+ *
+ * \return Always returns 0
  */
 static int Hub_Net_removeMarkedClosedClients(void) {
     Hub_Client* client;
@@ -139,6 +144,11 @@ void Hub_Net_markClientClosed(Hub_Client* client) {
     pthread_mutex_unlock(&remove_client_lock);
 }
 
+/**
+ * \brief Initialize the hub component
+ *
+ * Initialize the hub component
+ */
 void Hub_Net_init(void) {
     clients = List_new();
     closed_clients = Queue_new();
@@ -255,13 +265,14 @@ void Hub_Net_close(void) {
 }
 
 /**
- * \brief Get connected clients
+ * \brief Get clients
  *
- * Get a list of connected clients. Access to the list should be proteced by
- * calls to Hub_Net_acquireGlobalClientsLock and
- * Hub_Net_releaseGlobalClientsLock
+ * Get a list of all clients. Access to the list should be proteced by calls to
+ * Hub_Net_acquireGlobalClientsLock and Hub_Net_releaseGlobalClientsLock
+ *
+ * \return The list of clients
  */
-List* Hub_Net_getConnectedClients(void) {
+List* Hub_Net_getClients(void) {
     return clients;
 }
 

@@ -138,7 +138,7 @@ int Hub_Net_sendMessage(Hub_Client* client, Comm_Message* message) {
  */
 void Hub_Net_broadcastMessage(Comm_Message* message) {
     Comm_PackedMessage* packed_message = Comm_packMessage(message);
-    List* clients = Hub_Net_getConnectedClients();
+    List* clients = Hub_Net_getClients();
     int client_count;
     Hub_Client* client;
     
@@ -167,7 +167,7 @@ void Hub_Net_broadcastMessage(Comm_Message* message) {
  */
 void Hub_Net_broadcastNotification(Comm_Message* message) {
     Comm_PackedMessage* packed_message = Comm_packMessage(message);
-    List* clients = Hub_Net_getConnectedClients();
+    List* clients = Hub_Net_getClients();
     int client_count;
     List* send_to = List_new();
     Hub_Client* client;

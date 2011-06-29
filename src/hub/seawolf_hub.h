@@ -151,7 +151,7 @@ void Hub_Net_init(void);
 void Hub_Net_preClose(void);
 void Hub_Net_close(void);
 void Hub_Net_markClientClosed(Hub_Client* client);
-List* Hub_Net_getConnectedClients(void);
+List* Hub_Net_getClients(void);
 void Hub_Net_acquireGlobalClientsLock(void);
 void Hub_Net_releaseGlobalClientsLock(void);
 void Hub_Net_mainLoop(void);

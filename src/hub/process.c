@@ -23,10 +23,9 @@ static int Hub_Process_var(Hub_Client* client, Comm_Message* message);
  * Process a message related to core Comm functions. Connection establishment,
  * shutdown, authentication, etc.
  *
- * \param message The received message
  * \param client The client which sent the receive message
- * \return Return value specifies the scope of the response (RESPOND_TO_SENDER,
- * RESPOND_TO_ALL, etc.)
+ * \param message The received message
+ * \return 0 on success, -1 otherwise
  */
 static int Hub_Process_comm(Hub_Client* client, Comm_Message* message) {
     Comm_Message* response = NULL;
@@ -72,9 +71,9 @@ static int Hub_Process_comm(Hub_Client* client, Comm_Message* message) {
  * Process a received notification message by rebroadcasting the notification
  * to all connected clients
  *
+ * \param client Client sending the messages
  * \param message The received message
- * \param response The response it stored here
- * \return Response action
+ * \return 0 on success, -1 otherwise
  */
 static int Hub_Process_notify(Hub_Client* client, Comm_Message* message) {
     static char* notify_0 = "NOTIFY";
@@ -106,6 +105,17 @@ static int Hub_Process_notify(Hub_Client* client, Comm_Message* message) {
     return 0;
 }
 
+/**
+ * \brief Process a watch message
+ *
+ * Process a WATCH mesage. WATCH messages are sent regarding variable
+ * subscriptions. Client can request subscriptions be added or removed. The hub
+ * will then send WATCH messages to clients to inform them of variable updates.
+ *
+ * \param client Client that sent the message
+ * \param message WATCH message to process
+ * \return 0 on success, -1 otherwise
+ */
 static int Hub_Process_watch(Hub_Client* client, Comm_Message* message) {
     int n = -1;
     
@@ -138,8 +148,7 @@ static int Hub_Process_watch(Hub_Client* client, Comm_Message* message) {
  * Process a log message requesting a message be centrally logged
  *
  * \param message The recieved messsage
- * \param response Pointer to a location to allocate and store a response
- * \return Response action
+ * \return 0 on success, -1 otherwise
  */
 static int Hub_Process_log(Comm_Message* message) {
     if(message->count != 4) {
@@ -155,10 +164,9 @@ static int Hub_Process_log(Comm_Message* message) {
  *
  * Process a message setting or getting a variable
  *
+ * \param client The client initiating the request
  * \param message The received message
- * \param response Pointer to a location to allocate and store a respones
- * \param client Pointer the the client initiating the request
- * \return Response action
+ * \return 0 on success, -1 otherwisex
  */
 static int Hub_Process_var(Hub_Client* client, Comm_Message* message) {
     Comm_Message* response = NULL;
@@ -219,10 +227,9 @@ static int Hub_Process_var(Hub_Client* client, Comm_Message* message) {
  *
  * Process an incoming message from a client
  *
- * \param message Received message
- * \param response Pointer to a location to allocate and store a possible response
  * \param client Client which the message was received from
- * \return Response action
+ * \param message Received message
+ * \return 0 on success, -1 otherwise
  */
 int Hub_Process_process(Hub_Client* client, Comm_Message* message) {
     if(message->count == 0) {

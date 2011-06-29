@@ -369,6 +369,16 @@ int Hub_Var_setValue(const char* name, double value) {
     return 0;
 }
 
+/**
+ * \brief Add a subscriber to the variable
+ *
+ * Add a subscriber to the variable name. A subscriber is a client that is sent
+ * a message any time the variable is set
+ *
+ * \param client Subscriber to add to the variable
+ * \param name Name of the variable to add the subscriber to
+ * \return 0 on success, -1 otherwise
+ */
 int Hub_Var_addSubscriber(Hub_Client* client, const char* name) {
     Hub_Var* var = Dictionary_get(var_cache, name);
 
@@ -385,6 +395,15 @@ int Hub_Var_addSubscriber(Hub_Client* client, const char* name) {
     return 0;
 }
 
+/**
+ * \brief Remove a subscriber from a variable
+ *
+ * Remove a client previously subscribed to the given variable
+ *
+ * \param client Client to unsubscribe
+ * \param name Name of variable to remove subscription from
+ * \return 0 on success, -1 otherwise
+ */
 int Hub_Var_deleteSubscriber(Hub_Client* client, const char* name) {
     Hub_Var* var = Dictionary_get(var_cache, name);
     int i;
