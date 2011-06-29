@@ -225,6 +225,11 @@ static int Hub_Process_var(Hub_Client* client, Comm_Message* message) {
  * \return Response action
  */
 int Hub_Process_process(Hub_Client* client, Comm_Message* message) {
+    if(message->count == 0) {
+        Hub_Client_kick(client, "Illegal message");
+        return -1;
+    }
+
     if(strcmp(message->components[0], "COMM") == 0) {
         return Hub_Process_comm(client, message);
     } else if(client->state == CONNECTED) {

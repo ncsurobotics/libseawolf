@@ -431,7 +431,11 @@ Comm_Message* Comm_unpackMessage(Comm_PackedMessage* packed_message) {
     /* Build message meta information */
     message->request_id = ntohs(((uint16_t*)packed_message->data)[1]);
     message->count = ntohs(((uint16_t*)packed_message->data)[2]);
-    assert(message->count != 0);
+
+    if(message->count == 0) {
+        message->components = NULL;
+        return message;
+    }
 
     message->components = MemPool_reserve(message->alloc, sizeof(char*) * message->count);
 
