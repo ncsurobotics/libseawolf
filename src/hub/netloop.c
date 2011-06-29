@@ -436,7 +436,7 @@ void Hub_Net_mainLoop(void) {
 
         /* When the hub is closing Hub_Net_close will set run_mainloop to 0 and
            then attempt to open a connection to the server socket. This will
-           wake up the select call which is why this addtional check is placed
+           wake up the select call which is why this additional check is placed
            here */
         if(!run_mainloop) {
             break;
