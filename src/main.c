@@ -23,6 +23,10 @@ static bool closed = false;
 /** Path to the configuration file */
 static char* seawolf_config_file = NULL;
 
+/** Save previous SIGINT handler so we can call it after we're done closing
+    libseawolf instead of calling exit immediately. */
+static void (*old_sigint_handler)(int) = NULL;
+
 /** Queue of functions to call on exit */
 static Queue* at_exit = NULL;
 
@@ -57,7 +61,7 @@ void Seawolf_init(const char* name) {
     app_name[SEAWOLF_MAX_NAME_LEN - 1] = '\0';
 
     /* Catch siginals and insure proper shutdown */
-    signal(SIGINT, Seawolf_catchSignal);
+    old_sigint_handler = signal(SIGINT, Seawolf_catchSignal);
     signal(SIGHUP, Seawolf_catchSignal);
     signal(SIGTERM, Seawolf_catchSignal);
     signal(SIGPIPE, SIG_IGN);
@@ -193,8 +197,17 @@ static void Seawolf_processConfig(void) {
  */
 static void Seawolf_catchSignal(int sig) {
     /* Caught signal, exit and properly shut down */
-    Logging_log(CRITICAL, "Signal caught! Shutting down...");
-    Seawolf_exitError();
+    Logging_log(CRITICAL, "Signal caught! Closing libseawolf...");
+    Seawolf_close();
+
+    switch(sig) {
+    case SIGINT:
+        if(old_sigint_handler == SIG_DFL) {
+            exit(0);
+        } else {
+            old_sigint_handler(SIGINT);
+        }
+    }
 }
 
 /**
