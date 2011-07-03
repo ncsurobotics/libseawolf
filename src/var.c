@@ -385,7 +385,6 @@ static void Var_inputNewValue(char* name, float value) {
         s = Dictionary_get(subscriptions, name);
         if(s != NULL) {
             pthread_rwlock_wrlock(&s->lock); {
-                s->last = s->current;
                 s->current = value;
                 s->poked = true;
 
