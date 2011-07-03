@@ -442,15 +442,30 @@ void Var_setAutoNotify(bool autonotify) {
  * \private
  */
 void Var_close(void) {
+    List* keys;
+    int n;
+
     if(initialized) {
-        List* keys = Dictionary_getKeys(ro_cache);
-        int n = List_getSize(keys);
+        /* Free readonly variable cache */
+        keys = Dictionary_getKeys(ro_cache);
+        n = List_getSize(keys);
         for(int i = 0; i < n; i++) {
             free(Dictionary_get(ro_cache, List_get(keys, i)));
         }
 
         List_destroy(keys);
         Dictionary_destroy(ro_cache);
+
+        /* Free subscriptions */
+        keys = Dictionary_getKeys(subscriptions);
+        n = List_getSize(keys);
+        for(int i = 0; i < n; i++) {
+            free(Dictionary_get(subscriptions, List_get(keys, i)));
+        }
+
+        List_destroy(keys);
+        Dictionary_destroy(subscriptions);
+
         initialized = false;
     }
 }
