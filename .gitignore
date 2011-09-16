@@ -1,0 +1,13 @@
+*.o
+*.so
+*.db
+*.log
+*~
+*.swp
+
+/src/hub/seawolf-hub
+/src/python/seawolf.py
+/src/python/seawolf_wrap.c
+/src/python/build/
+/doc/html/
+/doc/hub/html/
