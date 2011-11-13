@@ -8,6 +8,8 @@
 
 #include <signal.h>
 
+//#define CATCH_SIGNALS
+
 /** Wrapper for a function to be called at exit. ISO C forbids functions to be
     cast to void* so this little trick help us get around that limitation */
 typedef struct {
@@ -23,14 +25,16 @@ static bool closed = false;
 /** Path to the configuration file */
 static char* seawolf_config_file = NULL;
 
-/** Save previous SIGINT handler so we can call it after we're done closing
-    libseawolf instead of calling exit immediately. */
-static void (*old_sigint_handler)(int) = NULL;
-
 /** Queue of functions to call on exit */
 static Queue* at_exit = NULL;
 
+#ifdef CATCH_SIGNALS
+/** Save previous SIGINT handler so we can call it after we're done closing
+    libseawolf instead of calling exit immediately. */
+static void (*old_sigint_handler)(int) = NULL;
 static void Seawolf_catchSignal(int sig);
+#endif
+
 static void Seawolf_processConfig(void);
 
 /**
@@ -60,11 +64,13 @@ void Seawolf_init(const char* name) {
     strncpy(app_name, name, SEAWOLF_MAX_NAME_LEN);
     app_name[SEAWOLF_MAX_NAME_LEN - 1] = '\0';
 
+#ifdef CATCH_SIGNALS
     /* Catch siginals and insure proper shutdown */
     old_sigint_handler = signal(SIGINT, Seawolf_catchSignal);
     signal(SIGHUP, Seawolf_catchSignal);
     signal(SIGTERM, Seawolf_catchSignal);
     signal(SIGPIPE, SIG_IGN);
+#endif
 
     /* Choose configuration file */
     if(getenv("SW_CONFIG")) {
@@ -188,6 +194,8 @@ static void Seawolf_processConfig(void) {
     Dictionary_destroy(config);
 }
 
+#ifdef CATCH_SIGNALS
+
 /**
  * \brief Catch spurious signals
  *
@@ -209,6 +217,8 @@ static void Seawolf_catchSignal(int sig) {
         }
     }
 }
+
+#endif
 
 /**
  * \brief Register a function to be called on exit
