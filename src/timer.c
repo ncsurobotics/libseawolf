@@ -5,18 +5,31 @@
 
 #include "seawolf.h"
 
-#include <time.h>
+static double get_monotonic_seconds(void);
 
-/**
- * Compute the time difference in seconds between two timespec structures
- *
- * \private
- * \param t Base time
- * \param s New time
- * \return Timer difference in seconds
- */
-#define _TIMESPEC_DIFF(/* struct timespec */ t, /* struct timespec */ s) \
-    ((double)((s).tv_sec - (t).tv_sec) + (((double)(s).tv_nsec - (t).tv_nsec) / 1e9))
+#ifdef __SW_Darwin__
+
+# include <mach/mach_time.h>
+
+static mach_timebase_info_data_t timebase;
+
+static double get_monotonic_seconds(void) {
+    uint64_t now = mach_absolute_time();
+    double nanoseconds = ((double) now * timebase.numer) / timebase.denom;
+    return nanoseconds * 1e-9;
+}
+
+#else
+
+# include <time.h>
+
+static double get_monotonic_seconds(void) {
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return ((double) now.tv_sec) + (((double) now.tv_nsec) * 1e-9);
+}
+
+#endif
 
 /**
  * \defgroup Timer Timer
@@ -24,6 +37,12 @@
  * \brief Timers for calculating total time and time delays
  * \{
  */
+
+void Timer_init(void) {
+#ifdef __SW_Darwin__
+    mach_timebase_info(&timebase);
+#endif
+}
 
 /**
  * \brief Return a new Timer object
@@ -55,11 +74,8 @@ Timer* Timer_new(void) {
  * Timer_getDelta()
  */
 double Timer_getDelta(Timer* tm) {
-    struct timespec now;
-    double diff;
-
-    clock_gettime(CLOCK_REALTIME, &now);
-    diff = _TIMESPEC_DIFF(tm->last, now);
+    double now = get_monotonic_seconds();
+    double diff = now - tm->last;
     tm->last = now;
 
     return diff;
@@ -74,13 +90,7 @@ double Timer_getDelta(Timer* tm) {
  * \return Seconds since timer reset or timer creation
  */
 double Timer_getTotal(Timer* tm) {
-    struct timespec now;
-    double diff;
-
-    clock_gettime(CLOCK_REALTIME, &now);
-    diff = _TIMESPEC_DIFF(tm->base, now);
-
-    return diff;
+    return get_monotonic_seconds() - tm->base;
 }
 
 /**
@@ -92,8 +102,7 @@ double Timer_getTotal(Timer* tm) {
  */
 void Timer_reset(Timer* tm) {
     /* Store the time into base and copy to last */
-    clock_gettime(CLOCK_REALTIME, &tm->base);
-    tm->last = tm->base;
+    tm->last = tm->base = get_monotonic_seconds();
 }
 
 /**

@@ -16,15 +16,16 @@ typedef struct {
      * Starting time
      * \private
      */
-    struct timespec base;
+    double base;
 
     /**
      * Time at last delta
      * \private
      */
-    struct timespec last;
+    double last;
 } Timer;
 
+void Timer_init(void);
 Timer* Timer_new(void);
 double Timer_getDelta(Timer* tm);
 double Timer_getTotal(Timer* tm);

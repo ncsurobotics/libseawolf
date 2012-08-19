@@ -95,6 +95,7 @@ void Seawolf_init(const char* name) {
     Var_init();
     Logging_init();
     Serial_init();
+    Timer_init();
 
     /* Log message announcing application launch */
     Logging_log(INFO, "Initialized");

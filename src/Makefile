@@ -5,7 +5,7 @@ include ../$(CONFIG)
 EXTRA_CFLAGS = -fPIC -I../include/
 
 SONAME = $(LIB_NAME).$(MAJOR)
-LDFLAGS += -lpthread --shared -Wl,-soname,$(SONAME)
+LDFLAGS += -lpthread --shared -Wl,-$(LD_SONAME_FLAG),$(SONAME)
 LDFLAGS += $(EXTRA_LDFLAGS)
 
 INCLUDES= ../include/seawolf/*.h ../include/seawolf.h

@@ -19,6 +19,9 @@ HUB_NAME = seawolf-hub
 # Extra LDFLAGS for some systems
 EXTRA_LDFLAGS = 
 
+# ld flag for specifying the name of a shared library
+LD_SONAME_FLAG = soname
+
 # Python executable to use when building Python bindings
 PYTHON ?= python
 
@@ -39,6 +42,8 @@ ifndef CONFIG
     CONFIG = build/config.obsd.mk
   else ifeq ($(HOSTTYPE), NetBSD)
     CONFIG = build/config.netbsd.mk
+  else ifeq ($(HOSTTYPE), Darwin)
+    CONFIG = build/config.darwin.mk
   else
     # Fall back to a generic set of options
     CONFIG = build/config.generic.mk
