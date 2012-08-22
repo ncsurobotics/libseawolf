@@ -12,23 +12,27 @@ LDFLAGS += -L/usr/local/lib
 # Install prefix
 #PREFIX ?= /usr/local
 
+# Library version
+MAJOR = 0
+MINOR = 1
+REV = 0
+
 # Component names
-LIB_NAME = libseawolf.so
+LIB_NAME = seawolf
 HUB_NAME = seawolf-hub
 
 # Extra LDFLAGS for some systems
 EXTRA_LDFLAGS = 
 
-# ld flag for specifying the name of a shared library
-LD_SONAME_FLAG = soname
+# Library output file
+LIB_FILE = lib$(LIB_NAME).so.$(MAJOR)
+LIB_FILE_BASE = lib$(LIB_NAME).so
+
+# Arguments to the compiler for building the shared library
+LIB_LDFLAGS = --shared -Wl,-soname,$(LIB_FILE)
 
 # Python executable to use when building Python bindings
 PYTHON ?= python
-
-# Library version
-MAJOR = 0
-MINOR = 1
-REV = 0
 
 # Attempt to automatically determine the host type
 ifndef CONFIG

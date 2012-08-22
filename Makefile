@@ -5,9 +5,9 @@ include $(CONFIG)
 # Ensure that PREFIX is saved as an absolute path
 export PREFIX := $(abspath $(PREFIX))
 
-all: $(LIB_NAME) $(HUB_NAME)
+all: $(LIB_FILE) $(HUB_NAME)
 
-$(LIB_NAME):
+$(LIB_FILE):
 	cd src && $(MAKE) $@
 
 $(HUB_NAME):
