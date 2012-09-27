@@ -3,7 +3,7 @@ include ../../build/config.base.mk
 include ../../$(CONFIG)
 
 EXTRA_CFLAGS = -I../../include/
-LDFLAGS += -L../ -l$(LIB_NAME) -lpthread
+LDFLAGS += -L../ -l$(LIB_NAME) -lpthread -lrt
 
 INCLUDES= ../../include/seawolf/*.h ../../include/seawolf.h seawolf_hub.h
 
@@ -13,7 +13,7 @@ OBJ= $(SRC:.c=.o)
 all: $(HUB_NAME)
 
 $(HUB_NAME): $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) -o $(HUB_NAME)
+	$(CC) $(OBJ) -o $(HUB_NAME) $(LDFLAGS)
 
 .c.o:
 	$(CC) $(EXTRA_CFLAGS) $(CFLAGS) -c $< -o $@
