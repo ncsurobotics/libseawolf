@@ -20,7 +20,7 @@ setup(
     ext_modules=[Extension(
             'seawolf._seawolf', ['seawolf.i'],
             swig_opts=['-I../../include/'],
-            libraries=['seawolf', 'rt'],
+            libraries=['seawolf'],
             include_dirs=['../../include/'],
             library_dirs=['../'],
             define_macros=[('_POSIX_C_SOURCE', '200112L'), ('_XOPEN_SOURCE', '600')]

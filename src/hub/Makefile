@@ -3,7 +3,7 @@ include ../../build/config.base.mk
 include ../../$(CONFIG)
 
 EXTRA_CFLAGS = -I../../include/
-LDFLAGS += -L../ -l$(LIB_NAME) -lpthread -lrt
+LDFLAGS += -L../ -l$(LIB_NAME) -lpthread
 
 INCLUDES= ../../include/seawolf/*.h ../../include/seawolf.h seawolf_hub.h
 

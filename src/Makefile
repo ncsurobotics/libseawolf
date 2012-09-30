@@ -16,7 +16,7 @@ OBJ = $(SRC:.c=.o)
 all: $(LIB_FILE)
 
 $(LIB_FILE): $(OBJ)
-	$(CC) $(LDFLAGS) $(LIB_LDFLAGS) $(OBJ) -o $(LIB_FILE)
+	$(CC) $(OBJ) -o $(LIB_FILE) $(LIB_LDFLAGS) $(LDFLAGS)
 	ln -sf $(LIB_FILE) $(LIB_FILE_BASE)
 
 pylib: $(LIB_FILE)
