@@ -231,7 +231,7 @@ void Serial_setBaud(SerialPort sp, int baud) {
     case 57600:
         real_baud = B57600;
         break;
-    case 155200:
+    case 115200:
         real_baud = B115200;
         break;
 #endif
