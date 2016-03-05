@@ -382,7 +382,6 @@ int Serial_get(SerialPort sp, void* buffer, size_t count) {
  * \return -1 if a write errors occurs, 0 otherwise
  */
 int Serial_sendByte(SerialPort sp, unsigned char b) {
-    printf("Sending 0x%X to device at sp=%d.\n", b, sp);
     return Serial_send(sp, &b, 1);
 }
 
@@ -399,6 +398,13 @@ int Serial_sendByte(SerialPort sp, unsigned char b) {
 int Serial_send(SerialPort sp, void* buffer, size_t count) {
     unsigned char* buffer_c = (unsigned char*) buffer;
     size_t n;
+    
+    /* debugging message */
+    printf("Sending to sp=%d: ", sp);
+    for(int i=0; i<count; i++) {
+        printf("0x%X ", *((unsigned char*)buffer+i));
+    }
+    printf("\n");
 
     while(count) {
         n = write(sp, buffer_c, count);
