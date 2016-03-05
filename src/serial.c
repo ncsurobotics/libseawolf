@@ -303,6 +303,8 @@ int Serial_getByte(SerialPort sp) {
     if(Serial_get(sp, &b, 1)) {
         return -1;
     }
+    
+    printf("Received 0x%X (%c) from sp=%d.\n",b,b,sp);
 
     return b;
 }
@@ -380,6 +382,7 @@ int Serial_get(SerialPort sp, void* buffer, size_t count) {
  * \return -1 if a write errors occurs, 0 otherwise
  */
 int Serial_sendByte(SerialPort sp, unsigned char b) {
+    printf("Sending 0x%X to device at sp=%d.\n", b, sp);
     return Serial_send(sp, &b, 1);
 }
 
@@ -438,7 +441,10 @@ void Serial_setDTR(SerialPort sp, int value) {
 /**
  * \brief Checks for data
  *
- * Returns the number of bytes available in the serial buffer
+ * Returns the number of bytes available in the serial (receive) buffer.
+ * In other words, it returns the number of bytes that are waiting to 
+ * be read. If 0 is returned from this function, then the serial
+ * (receive) buffer is empty.
  *
  * \param sp Handler for the device to check
  * \return The number of bytes available to be read or -1 if an error occured
@@ -447,6 +453,7 @@ int Serial_available(SerialPort sp) {
     int available;
 
     if(ioctl(sp, FIONREAD, &available)) {
+        printf("ERROR.Serial_available(...): %s\n", strerror(errno));
         return -1;
     }
 
