@@ -38,6 +38,7 @@ PID* PID_new(double sp, double p, double i, double d) {
     pid->d = d;
 
     pid->sp = sp;
+    pid->active_region = -1;
 
     pid->e_last = 0;
     pid->e_dt = 0;
@@ -81,6 +82,22 @@ double PID_update(PID* pid, double pv) {
     if(pid->paused == false) {
         /* Update running error */
         pid->e_dt += delta_t * e;
+
+	/* prevent I from over-saturating */
+	if (pid->e_dt * pid->i > 1) {
+		pid->e_dt = 1/pid->i;
+	} else if (pid->e_dt * pid->i < -1) {
+		pid->e_dt = -1/pid->i;
+	}
+
+	/* if error is outside the linear region, reset the ITerm.
+	This will also prevent I from over-saturating and from having a
+	residual effect when system reaches set point */
+	if (pid->active_region > 0) {
+	    if (abs(e) > pid->active_region) {
+	        pid->e_dt = 0;
+            }
+        }
 
         mv += pid->i * pid->e_dt;
         mv += pid->d * ((e - pid->e_last) / delta_t);
@@ -137,6 +154,19 @@ void PID_setCoefficients(PID* pid, double p, double i, double d) {
     pid->p = p;
     pid->i = i;
     pid->d = d;
+}
+
+/**
+ * \brief Define the (plus/minus) size of the active region
+ *
+ * Outside this region, thrusters will likley be maxed out
+ * and in order to prevent ITerm saturation, the ITerm will
+ * be ignored outside this region.
+ *
+ * \param pid The controller object
+ */
+void PID_setActiveRegion(PID* pid, double active_region) {
+    pid->active_region = active_region;
 }
 
 /**

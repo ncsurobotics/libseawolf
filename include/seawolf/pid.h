@@ -43,6 +43,12 @@ typedef struct {
     double sp;
 
     /**
+     * Linear region size
+     * \private
+     */
+    double active_region;
+
+    /**
      * Last error
      * \private
      */
@@ -67,5 +73,6 @@ void PID_resetIntegral(PID* pid);
 void PID_setCoefficients(PID* pid, double p, double i, double d);
 void PID_setSetPoint(PID* pid, double sp);
 void PID_destroy(PID* pid);
+void PID_setActiveRegion(PID* pid, double active_region);
 
 #endif // #ifndef __SEAWOLF_PID_INCLUDE_H
