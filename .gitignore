@@ -1,5 +1,6 @@
 *.o
 *.so
+*.so.0
 *.dylib
 *.db
 *.log

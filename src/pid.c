@@ -25,6 +25,7 @@
  * \param d Initial differential coefficient
  * \return The new PID object
  */
+
 PID* PID_new(double sp, double p, double i, double d) {
     PID* pid = malloc(sizeof(PID));
     if(pid == NULL) {
@@ -44,6 +45,22 @@ PID* PID_new(double sp, double p, double i, double d) {
     pid->e_dt = 0;
 
     pid->paused = true;
+    
+    //NEW: pid low pass filter for d term
+    double* buf = malloc(1*sizeof(double));
+    if(buf == NULL) {
+        printf("unable to spawn PID d buffer!\n");
+    }
+    
+    PID_LPF_t d_lpf = {
+        .value=0,
+        .buf=buf,
+        .head=0,
+        .n=1
+    };
+    
+    // attach lp
+    pid->d_lpf = d_lpf;
 
     return pid;
 }
@@ -74,6 +91,7 @@ double PID_update(PID* pid, double pv) {
     double delta_t = Timer_getDelta(pid->timer);
     double e = pid->sp - pv;
     double mv;
+    double raw_diff_e = 0;
 
     /* Calculate output value */
     mv  = pid->p * e;
@@ -100,16 +118,37 @@ double PID_update(PID* pid, double pv) {
         }
 
         mv += pid->i * pid->e_dt;
-        mv += pid->d * ((e - pid->e_last) / delta_t);
     }
+    
+    /* compute D term */
+    raw_diff_e = ((e - pid->e_last) / delta_t);
+    mv        += pid->d * PID_stepLPF(pid, raw_diff_e);
 
-    /* Unpause */
+    /* Unpause (why?)*/
     pid->paused = false;
 
     /* Store error */
     pid->e_last = e;
 
     return mv;
+}
+
+double PID_stepLPF(PID* pid, double val) {
+    double sum = 0;
+    
+    // write value to buffer
+    pid->d_lpf.buf[ pid->d_lpf.head ] = val;
+    
+    // run summation
+    for(int i=0; i < pid->d_lpf.n; i++) {
+        sum += pid->d_lpf.buf[i];
+    }
+    
+    // average and increment pointer
+    pid->d_lpf.value = (sum / pid->d_lpf.n);
+    pid->d_lpf.head = (pid->d_lpf.head + 1) % pid->d_lpf.n;
+    
+    return pid->d_lpf.value;
 }
 
 /**
@@ -167,6 +206,33 @@ void PID_setCoefficients(PID* pid, double p, double i, double d) {
  */
 void PID_setActiveRegion(PID* pid, double active_region) {
     pid->active_region = active_region;
+}
+
+/**
+ * \brief 
+ *
+ * 
+ *
+ * \param -
+ */
+void PID_setDerivativeBufferSize(PID* pid, uint8_t n) {
+    // tray and allocate memory for the 
+    double* temp = malloc(n*sizeof(double));
+    if (temp == NULL) {
+        printf("Couldnt allocate memory for the derivative buffer!\n");
+        return;
+    }
+    // deallocate memory that is no longer needed
+    free(pid->d_lpf.buf);
+    
+    // allocate memory for the new buffer size
+    pid->d_lpf.buf = temp;
+    pid->d_lpf.n = n;
+    
+    // wipe the new memory clean
+    for(int i=0; i < n; i++) {
+        pid->d_lpf.buf[i] = 0.0;
+    }
 }
 
 /**

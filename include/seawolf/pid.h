@@ -8,6 +8,17 @@
 #include "seawolf/timer.h"
 
 /**
+ * LPF
+ * \private
+ */
+typedef struct PID_LPF_STRUCT {
+        double value;
+        double* buf;
+        uint8_t head;
+        uint8_t n;
+} PID_LPF_t;
+
+/**
  * PID
  * \private
  */
@@ -59,6 +70,12 @@ typedef struct {
      * \private
      */
     double e_dt;
+    
+    /**
+     * Derivative low pass filter
+     * \private
+     */
+    PID_LPF_t d_lpf;
 
     /**
      * Run state of the controller
@@ -74,5 +91,7 @@ void PID_setCoefficients(PID* pid, double p, double i, double d);
 void PID_setSetPoint(PID* pid, double sp);
 void PID_destroy(PID* pid);
 void PID_setActiveRegion(PID* pid, double active_region);
+double PID_stepLPF(PID* pid, double val);
+void PID_setDerivativeBufferSize(PID* pid, uint8_t n);
 
 #endif // #ifndef __SEAWOLF_PID_INCLUDE_H
