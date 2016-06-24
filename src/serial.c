@@ -359,9 +359,17 @@ int Serial_get(SerialPort sp, void* buffer, size_t count) {
         }
 
         n = read(sp, buffer_c, count);
+
+        // if error occured, report it
         if(n == -1) {
             return -1;
-        }
+
+        // if no bytes read, treat it as writing a NULL character
+        } /*else if(n == 0) { <--- #TODO: implement once watchdog timer actually works
+            *buffer_c = '\0';
+            n = 1;
+            
+        } */
 
         count -= n;
         buffer_c += n;

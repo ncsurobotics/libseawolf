@@ -122,6 +122,9 @@ class PID:
 
     def setActiveRegion(self, *args):
         return _sw.PID_setActiveRegion(self.pid, *args)
+        
+    def setDerivativeBufferSize(self, *args):
+        return _sw.PID_setDerivativeBufferSize(self.pid, *args)
 
     def __del__(self, *args):
         _sw.PID_destroy(self.pid)

@@ -14,8 +14,8 @@
 typedef struct PID_LPF_STRUCT {
         double value;
         double* buf;
-        uint8_t head;
-        uint8_t n;
+        int head;
+        int n;
 } PID_LPF_t;
 
 /**
@@ -92,6 +92,6 @@ void PID_setSetPoint(PID* pid, double sp);
 void PID_destroy(PID* pid);
 void PID_setActiveRegion(PID* pid, double active_region);
 double PID_stepLPF(PID* pid, double val);
-void PID_setDerivativeBufferSize(PID* pid, uint8_t n);
+void PID_setDerivativeBufferSize(PID* pid, int n);
 
 #endif // #ifndef __SEAWOLF_PID_INCLUDE_H

@@ -122,7 +122,10 @@ double PID_update(PID* pid, double pv) {
     
     /* compute D term */
     raw_diff_e = ((e - pid->e_last) / delta_t);
-    mv        += pid->d * PID_stepLPF(pid, raw_diff_e);
+    double temp_d = pid->d * PID_stepLPF(pid, raw_diff_e);
+    mv        += temp_d;
+    //mv += ((e - pid->e_last) / delta_t);
+    //Logging_log(INFO, __Util_format("Unable to create socket: %f", temp_d));
 
     /* Unpause (why?)*/
     pid->paused = false;
@@ -215,7 +218,7 @@ void PID_setActiveRegion(PID* pid, double active_region) {
  *
  * \param -
  */
-void PID_setDerivativeBufferSize(PID* pid, uint8_t n) {
+void PID_setDerivativeBufferSize(PID* pid, int n) {
     // tray and allocate memory for the 
     double* temp = malloc(n*sizeof(double));
     if (temp == NULL) {
