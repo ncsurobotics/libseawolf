@@ -1,4 +1,4 @@
-NOTE: Building documentation does not work out of the box. See (this comment)[https://github.com/ncsurobotics/libseawolf/issues/4#issuecomment-424905719] on issue #4 for a fix.
+NOTE: Building documentation does not work out of the box. See [this comment]9https://github.com/ncsurobotics/libseawolf/issues/4#issuecomment-424905719) on issue #4 for a fix.
 
 
 Prerequisites
